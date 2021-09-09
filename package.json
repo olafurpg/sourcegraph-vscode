@@ -11,22 +11,107 @@
     "url": "https://github.com/sourcegraph/sourcegraph-vscode.git"
   },
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.60.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
+    "onNotebook:sourcegraph-notebook",
+    "onFileSystem:sourcegraph",
+    "onLanguage:sourcegraph",
+    "onView:sourcegraph",
+    "onCommand:extension.openFile",
+    "onCommand:extension.goToFile",
+    "onCommand:extension.goToRepository",
+    "onCommand:extension.newNotebook",
     "onCommand:extension.open",
     "onCommand:extension.search.selection",
     "onCommand:extension.search"
   ],
   "main": "./out/extension",
   "contributes": {
+    "notebookRenderer": [
+      {
+        "id": "sourcegraph-location-renderer",
+        "displayName": "Sourcegraph Location Renderer",
+        "mimeTypes": [
+          "application/sourcegraph-location"
+        ],
+        "entrypoint": "./src/notebook/SourcegraphLocationRenderer.js",
+        "requiresMessaging": "always"
+      }
+    ],
+    "notebooks": [
+      {
+        "type": "sourcegraph-notebook",
+        "displayName": "Sourcegraph Notebook",
+        "priority": "option",
+        "selector": [
+          {
+            "filenamePattern": "*.snb.{md,markdown}"
+          }
+        ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "sourcegraph",
+        "aliases": [
+          "Sourcegraph Query",
+          "Sourcegraph",
+          "sourcegraph"
+        ],
+        "extensions": [
+          ".sourcegraph"
+        ],
+        "//": "TODO: experiment with adding an iconFont as mentioned here https://github.com/microsoft/vscode/issues/114942#issuecomment-773457375"
+      }
+    ],
+    "viewsWelcome": [
+      {
+        "view": "sourcegraph.commands",
+        "contents": "[New Search Notebook](command:extension.newNotebook)\n[Go to File](command:extension.goToFile)\n[Go to Repository](command:extension.goToRepository)"
+      },
+      {
+        "view": "sourcegraph.files",
+        "contents": "No open files."
+      }
+    ],
     "commands": [
       {
+        "command": "extension.goToFile",
+        "category": "Sourcegraph",
+        "title": "Go to File"
+      },
+      {
+        "command": "extension.goToRepository",
+        "category": "Sourcegraph",
+        "title": "Go to Repository"
+      },
+      {
+        "command": "extension.newNotebook",
+        "category": "Sourcegraph",
+        "title": "New Search Notebook"
+      },
+      {
+        "command": "extension.focusActiveFile",
+        "category": "Sourcegraph",
+        "title": "Focus on Active File in Side Bar",
+        "icon": {
+          "light": "icons/focus-light.svg",
+          "dark": "icons/focus-dark.svg"
+        }
+      },
+      {
+        "command": "extension.openFile",
+        "category": "Sourcegraph",
+        "title": "Open File"
+      },
+      {
         "command": "extension.open",
-        "title": "Sourcegraph: Open"
+        "category": "Sourcegraph",
+        "title": "Open"
       },
       {
         "command": "extension.search.selection",
@@ -34,9 +119,40 @@
       },
       {
         "command": "extension.search",
-        "title": "Sourcegraph: Search"
+        "category": "Sourcegraph",
+        "title": "Search"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sourcegraph-view",
+          "title": "Sourcegraph",
+          "icon": "images/logo.png"
+        }
+      ]
+    },
+    "views": {
+      "sourcegraph-view": [
+        {
+          "id": "sourcegraph.commands",
+          "name": "Commands"
+        },
+        {
+          "id": "sourcegraph.files",
+          "name": "Files"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "extension.focusActiveFile",
+          "group": "navigation",
+          "when": "view == sourcegraph.files"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "extension.open",
@@ -45,7 +161,22 @@
         "when": "editorFocus"
       },
       {
-        "command": "extension.search.selection",
+        "command": "extension.goToFile",
+        "key": "alt+f",
+        "mac": "alt+f"
+      },
+      {
+        "command": "extension.goToRepository",
+        "key": "alt+r",
+        "mac": "alt+r"
+      },
+      {
+        "command": "extension.focusActiveFile",
+        "key": "alt+1",
+        "mac": "alt+1"
+      },
+      {
+        "command": "extension.search",
         "key": "alt+s",
         "mac": "alt+s",
         "when": "editorFocus"
@@ -58,7 +189,7 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "Sourcegraph extension configuration",
+      "title": "Sourcegraph",
       "properties": {
         "sourcegraph.url": {
           "type": [
@@ -80,6 +211,33 @@
           ],
           "default": "",
           "description": "Always open files at this default branch."
+        },
+        "sourcegraph.debug": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "If true, log detailed troubleshooting information to the Sourcegraph output channel."
+        },
+        "sourcegraph.recentlyOpenFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Files that have been opened through the 'Go to file' command"
+        },
+        "sourcegraph.recentlyOpenRepositories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            }
+          },
+          "markdownDescription": "Files that have been opened through the 'Go to repository' command"
         }
       }
     }
@@ -143,7 +301,9 @@
     "@sourcegraph/prettierrc": "^3.0.3",
     "@sourcegraph/tsconfig": "^4.0.1",
     "@types/node": "14.17.15",
-    "@types/vscode": "1.52.0",
+    "@types/shelljs": "^0.8.9",
+    "@types/vscode": "1.60.0",
+    "@types/vscode-notebook-renderer": "^1.60.0",
     "eslint": "^7.32.0",
     "husky": "^4.3.6",
     "nyc": "^15.1.0",
@@ -156,8 +316,12 @@
   "dependencies": {
     "@types/mocha": "8.2.0",
     "execa": "^5.0.0",
+    "got": "^11.8.2",
     "mocha": "^8.3.0",
+    "node-fetch": "^3.0.0",
     "open": "^7.4.2",
+    "shelljs": "^0.8.4",
+    "tagged-template-noop": "^2.1.1",
     "ts-node": "^9.1.1"
   },
   "husky": {
