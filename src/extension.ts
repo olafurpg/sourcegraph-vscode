@@ -1,8 +1,9 @@
 import open from 'open'
+import { URL } from 'url'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
-import fetch from 'node-fetch'
+// import fetch from 'node-fetch'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const { version } = require('../package.json')
@@ -69,6 +70,10 @@ async function browseCommand(): Promise<void> {
     }
 }
 
+async function fetch(host: string, arguments: any): Promise<any> {
+    throw new Error('not implemented yet')
+}
+
 async function graphqlQuery<A, B>(query: string, variables: A): Promise<B | undefined> {
     const accessToken = process.env.SRC_ACCESS_TOKEN
     if (!accessToken) {
@@ -80,6 +85,7 @@ async function graphqlQuery<A, B>(query: string, variables: A): Promise<B | unde
         await vscode.window.showErrorMessage('no SRC_ENDPOINT')
         return
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const result = await fetch(endpoint, {
         method: 'post',
         body: JSON.stringify({
@@ -94,7 +100,7 @@ async function graphqlQuery<A, B>(query: string, variables: A): Promise<B | unde
             Authorization: `token ${accessToken}`,
         },
     })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const response: any = await result.json()
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return response
