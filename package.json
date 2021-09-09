@@ -17,12 +17,17 @@
     "Other"
   ],
   "activationEvents": [
+    "onCommand:extension.browse",
     "onCommand:extension.open",
     "onCommand:extension.search"
   ],
   "main": "./out/extension",
   "contributes": {
     "commands": [
+      {
+        "command": "extension.browse",
+        "title": "Sourcegraph: Browse"
+      },
       {
         "command": "extension.open",
         "title": "Sourcegraph: Open"
@@ -147,6 +152,7 @@
     "@types/mocha": "8.2.0",
     "execa": "^5.0.0",
     "mocha": "^8.3.0",
+    "node-fetch": "^3.0.0",
     "open": "^7.3.0",
     "ts-node": "^9.1.1"
   },
