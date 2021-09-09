@@ -1,5 +1,6 @@
 import open from 'open'
 import { URL } from 'url'
+import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
@@ -70,8 +71,10 @@ async function browseCommand(): Promise<void> {
     }
 }
 
-async function fetch(host: string, arguments: any): Promise<any> {
-    throw new Error('not implemented yet')
+interface Arguments {}
+
+function fetch(host: string, faster: Arguments): Promise<any> {
+    throw new Error(`not implemented yet ${host} ${JSON.stringify(faster)}`)
 }
 
 async function graphqlQuery<A, B>(query: string, variables: A): Promise<B | undefined> {
