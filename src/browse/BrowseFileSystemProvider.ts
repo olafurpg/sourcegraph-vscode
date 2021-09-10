@@ -10,7 +10,45 @@ export class BrowseFileSystemProvider implements vscode.FileSystemProvider {
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
     private readonly cache = new Map<vscode.Uri, Blob>()
-    private async cacheUri(uri: vscode.Uri): Promise<Blob> {
+    public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
+        const blob = await this.fetchBlob(uri)
+        return {
+            mtime: blob.time,
+            ctime: blob.time,
+            size: blob.content.length,
+            type: vscode.FileType.File,
+        }
+    }
+    public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+        const blob = await this.fetchBlob(uri)
+        return blob.content
+    }
+    public readDirectory(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
+        return []
+    }
+
+    // Unsupported methods for readonly file systems.
+    public createDirectory(uri: vscode.Uri): void | Thenable<void> {
+        throw new Error('Method not supported.')
+    }
+    public writeFile(
+        uri: vscode.Uri,
+        content: Uint8Array,
+        options: { create: boolean; overwrite: boolean }
+    ): void | Thenable<void> {
+        throw new Error('Method not supported.')
+    }
+    public delete(uri: vscode.Uri, options: { recursive: boolean }): void | Thenable<void> {
+        throw new Error('Method not supported.')
+    }
+    public rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): void | Thenable<void> {
+        throw new Error('Method not supported.')
+    }
+    public watch(uri: vscode.Uri, options: { recursive: boolean; excludes: string[] }): vscode.Disposable {
+        throw new Error('Method not supported.')
+    }
+
+    private async fetchBlob(uri: vscode.Uri): Promise<Blob> {
         const result = this.cache.get(uri)
         if (result) {
             return result
@@ -47,42 +85,6 @@ export class BrowseFileSystemProvider implements vscode.FileSystemProvider {
             return toCacheResult
         }
         throw new Error(`Not found '${uri.toString()}'`)
-    }
-    public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        const blob = await this.cacheUri(uri)
-        return {
-            mtime: blob.time,
-            ctime: blob.time,
-            size: blob.content.length,
-            type: vscode.FileType.File,
-        }
-    }
-    public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-        const blob = await this.cacheUri(uri)
-        return blob.content
-    }
-    public readDirectory(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-        return []
-    }
-
-    public createDirectory(uri: vscode.Uri): void | Thenable<void> {
-        throw new Error('Method not implemented.')
-    }
-    public writeFile(
-        uri: vscode.Uri,
-        content: Uint8Array,
-        options: { create: boolean; overwrite: boolean }
-    ): void | Thenable<void> {
-        throw new Error('Method not implemented.')
-    }
-    public delete(uri: vscode.Uri, options: { recursive: boolean }): void | Thenable<void> {
-        throw new Error('Method not implemented.')
-    }
-    public rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): void | Thenable<void> {
-        throw new Error('Method not implemented.')
-    }
-    public watch(uri: vscode.Uri, options: { recursive: boolean; excludes: string[] }): vscode.Disposable {
-        throw new Error('Method not implemented.')
     }
 }
 
