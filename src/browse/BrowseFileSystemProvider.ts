@@ -46,7 +46,6 @@ export class BrowseFileSystemProvider
     }
 
     private nodeToLocation(node: LocationNode): vscode.Location {
-        log.appendLine(`node=${JSON.stringify(node)}`)
         return new vscode.Location(
             vscode.Uri.parse(
                 `sourcegraph://sourcegraph.com/${node.resource.repository.name}@${node.resource.commit.oid}/-/blob/${node.resource.path}`
@@ -85,15 +84,19 @@ export class BrowseFileSystemProvider
             mtime: blob.time,
             ctime: blob.time,
             size: blob.content.length,
-            type: vscode.FileType.File,
+            type: blob.type,
         }
     }
     public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
         const blob = await this.fetchBlob(uri)
         return blob.content
     }
-    public readDirectory(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-        return []
+    public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+        const blob = await this.fetchBlob(uri)
+        if (blob.type !== vscode.FileType.Directory) {
+            throw new Error(`not a directory: ${uri.toString()}`)
+        }
+        return blob.children.map(child => [child.name, child.type])
     }
 
     // Unsupported methods for readonly file systems.
@@ -149,10 +152,34 @@ export class BrowseFileSystemProvider
                 content: encoder.encode(blobResult.data.repository.commit.blob.content),
                 path: parsed.path,
                 time: new Date().getMilliseconds(),
+                type: vscode.FileType.File,
+                children: [],
             }
             this.cache.set(uri, toCacheResult)
             return toCacheResult
         }
+        const directoryResult = await graphqlQuery<DirectoryParameters, DirectoryResult>(DirectoryQuery, {
+            repository: parsed.repository,
+            revision: parsed.revision,
+            path: parsed.path,
+        })
+        if (directoryResult) {
+            const toCacheResult: Blob = {
+                repository: parsed.repository,
+                revision: parsed.revision,
+                content: new Uint8Array(0),
+                path: parsed.path,
+                time: new Date().getMilliseconds(),
+                type: vscode.FileType.Directory,
+                children: directoryResult.data.repository.commit.tree.entries.map(entry => ({
+                    name: entry.name,
+                    type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
+                })),
+            }
+            this.cache.set(uri, toCacheResult)
+            return toCacheResult
+        }
+        log.appendLine(`no blob result for ${uri.toString()}`)
         throw new Error(`Not found '${uri.toString()}'`)
     }
 }
@@ -430,10 +457,75 @@ query References($repository: String!, $revision: String!, $path: String!, $line
 }
 `
 
+const DirectoryQuery = `
+query Directory($repoName: String!, $revision: String!, $filePath: String!) {
+  repository(name: $repoName) {
+    commit(rev: "", inputRevspec: $revision) {
+      tree(path: $filePath) {
+        ...TreeFields
+      }
+    }
+  }
+}
+
+fragment TreeFields on GitTree {
+  isRoot
+  url
+  entries(first: 2500, recursiveSingleChild: true) {
+    ...TreeEntryFields
+  }
+}
+
+fragment TreeEntryFields on TreeEntry {
+  name
+  path
+  isDirectory
+  url
+  submodule {
+    url
+    commit
+  }
+  isSingleChild
+}
+`
+interface DirectoryParameters {
+    repository: string
+    revision: string
+    path: string
+}
+interface DirectoryResult {
+    data: {
+        repository: {
+            commit: {
+                tree: {
+                    isRoot: boolean
+                    url: string
+                    entries: DirectoryEntry[]
+                }
+            }
+        }
+    }
+}
+interface DirectoryEntry {
+    name: string
+    path: string
+    isDirectory: boolean
+    url: string
+    submodule: string
+    isSingleChild: boolean
+}
+
 export interface Blob {
     repository: string
     revision: string
     path: string
     content: Uint8Array
     time: number
+    type: vscode.FileType
+    children: BlobChild[]
+}
+
+interface BlobChild {
+    name: string
+    type: vscode.FileType
 }
