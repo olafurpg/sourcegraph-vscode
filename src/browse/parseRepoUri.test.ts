@@ -5,17 +5,17 @@ import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
 function check(input: string, expected: ParsedRepoURI) {
     it(input, () => {
         const obtained = parseBrowserRepoURL(new URL(input))
-        assert.strictEqual(obtained, expected)
+        assert.deepStrictEqual(obtained, expected)
     })
 }
 
 describe('parseRepoUri', () => {
-    check('git://jdk@v8/-/blob/java/lang/String.java', {
+    check('https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java', {
         repository: 'jdk',
-        rawRevision: undefined,
+        rawRevision: 'v8',
         revision: 'v8',
         commitRange: undefined,
-        commitID: '',
+        commitID: undefined,
         path: 'java/lang/String.java',
         position: undefined,
         range: undefined,
