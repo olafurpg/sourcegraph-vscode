@@ -18,6 +18,7 @@
   ],
   "activationEvents": [
     "onFileSystem:sourcegraph",
+    "onView:sourcegraph",
     "onCommand:extension.browse",
     "onCommand:extension.open",
     "onCommand:extension.search"
@@ -38,6 +39,19 @@
         "title": "Sourcegraph: Search"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {"id": "sourcegraph-view", "title": "Sourcegraph", "icon": "images/logo.png"}
+      ]
+    },
+    "views": {
+      "sourcegraph-view": [
+        {
+          "id": "sourcegraph.files",
+          "name": "Files"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "extension.open",

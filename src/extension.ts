@@ -98,6 +98,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Register browse-related features.
     const fs = new BrowseFileSystemProvider()
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
+    context.subscriptions.push(vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs }))
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)

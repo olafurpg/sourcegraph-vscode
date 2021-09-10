@@ -6,11 +6,49 @@ import { parseBrowserRepoURL } from './parseRepoUrl'
 import { graphqlQuery } from './graphqlQuery'
 import { log } from '../log'
 
+const SOURCEGRAPH_ENDPOINT = 'https://sourcegraph.com'
+const BROWSE_ROOT = `sourcegraph://${SOURCEGRAPH_ENDPOINT}`
+
 export class BrowseFileSystemProvider
-    implements vscode.FileSystemProvider, vscode.HoverProvider, vscode.DefinitionProvider, vscode.ReferenceProvider {
+    implements
+        vscode.TreeDataProvider<vscode.Uri>,
+        vscode.FileSystemProvider,
+        vscode.HoverProvider,
+        vscode.DefinitionProvider,
+        vscode.ReferenceProvider {
+    public async getTreeItem(uri: vscode.Uri): Promise<vscode.TreeItem> {
+        const blob = await this.fetchCheapBlob(uri)
+        return {
+            id: blob.uri.toString(),
+            label: blob.name,
+            collapsibleState:
+                blob.type === vscode.FileType.Directory
+                    ? vscode.TreeItemCollapsibleState.Collapsed
+                    : vscode.TreeItemCollapsibleState.None,
+        }
+    }
+    public async getChildren(uri?: vscode.Uri): Promise<vscode.Uri[] | undefined> {
+        if (!uri) {
+            return Promise.resolve(undefined)
+        }
+        const blob = await this.fetchCheapBlob(uri)
+        return blob.children.map(child => child.uri)
+    }
+    public getParent(uri: vscode.Uri): vscode.Uri | undefined {
+        if (uri.path === '' || uri.path === '/') {
+            return undefined
+        }
+        const uriString = uri.toString()
+        const slash = uriString.lastIndexOf('/')
+        if (slash < 0) {
+            return undefined
+        }
+        return vscode.Uri.parse(uriString.slice(0, slash))
+    }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
     private readonly cache = new Map<vscode.Uri, Blob>()
+    private readonly cheapCache = new Map<vscode.Uri, CheapBlob>()
 
     public async provideReferences(
         document: vscode.TextDocument,
@@ -120,6 +158,14 @@ export class BrowseFileSystemProvider
         throw new Error('Method not supported.')
     }
 
+    private async fetchCheapBlob(uri: vscode.Uri): Promise<CheapBlob> {
+        const fromCache = this.cheapCache.get(uri)
+        if (fromCache) {
+            return Promise.resolve(fromCache)
+        }
+        const blob = await this.fetchBlob(uri)
+        return this.makeCheap(blob)
+    }
     private async fetchBlob(uri: vscode.Uri): Promise<Blob> {
         const result = this.cache.get(uri)
         if (result) {
@@ -147,6 +193,7 @@ export class BrowseFileSystemProvider
         if (blobResult) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
+                uri,
                 repository: parsed.repository,
                 revision: parsed.revision,
                 content: encoder.encode(blobResult.data.repository.commit.blob.content),
@@ -164,23 +211,45 @@ export class BrowseFileSystemProvider
             path: parsed.path,
         })
         if (directoryResult) {
+            const children: CheapBlob[] = directoryResult.data.repository.commit.tree.entries.map(entry => ({
+                uri: vscode.Uri.parse(BROWSE_ROOT + entry.url),
+                name: entry.name,
+                type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
+                children: [],
+                isShallow: true,
+            }))
+
+            for (const child of children) {
+                this.cheapCache.set(child.uri, child)
+            }
+
             const toCacheResult: Blob = {
+                uri,
                 repository: parsed.repository,
                 revision: parsed.revision,
                 content: new Uint8Array(0),
                 path: parsed.path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.Directory,
-                children: directoryResult.data.repository.commit.tree.entries.map(entry => ({
-                    name: entry.name,
-                    type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
-                })),
+                children,
             }
             this.cache.set(uri, toCacheResult)
+            this.cheapCache.set(uri, this.makeCheap(toCacheResult))
             return toCacheResult
         }
         log.appendLine(`no blob result for ${uri.toString()}`)
         throw new Error(`Not found '${uri.toString()}'`)
+    }
+
+    private makeCheap(blob: Blob): CheapBlob {
+        const parts = blob.uri.path.split('/')
+        return {
+            uri: blob.uri,
+            type: blob.type,
+            name: parts[parts.length - 1],
+            children: blob.children,
+            isShallow: false,
+        }
     }
 }
 
@@ -515,17 +584,20 @@ interface DirectoryEntry {
     isSingleChild: boolean
 }
 
-export interface Blob {
+interface CheapBlob {
+    uri: vscode.Uri
+    name: string
+    type: vscode.FileType
+    children: CheapBlob[]
+    isShallow: boolean
+}
+interface Blob {
+    uri: vscode.Uri
     repository: string
     revision: string
     path: string
     content: Uint8Array
     time: number
     type: vscode.FileType
-    children: BlobChild[]
-}
-
-interface BlobChild {
-    name: string
-    type: vscode.FileType
+    children: CheapBlob[]
 }
