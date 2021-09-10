@@ -3,7 +3,7 @@ import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { log } from '../log'
-import { parseRepoURI } from './parseRepoUri'
+import { parseBrowserRepoURL } from './parseRepoUrl'
 import { graphqlQuery } from './graphqlQuery'
 
 export class BrowseFileSystemProvider implements vscode.FileSystemProvider {
@@ -53,7 +53,7 @@ export class BrowseFileSystemProvider implements vscode.FileSystemProvider {
         if (result) {
             return result
         }
-        const parsed = parseRepoURI(new URL(uri.toString()))
+        const parsed = parseBrowserRepoURL(new URL(uri.toString()))
         if (!parsed.revision) {
             const revisionResult = await graphqlQuery<RevisionParameters, RevisionResult>(RevisionQuery, {
                 repository: parsed.repository,
