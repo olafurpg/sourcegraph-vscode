@@ -17,6 +17,7 @@
     "Other"
   ],
   "activationEvents": [
+    "onFileSystem:sourcegraph",
     "onCommand:extension.browse",
     "onCommand:extension.open",
     "onCommand:extension.search"

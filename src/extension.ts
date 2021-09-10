@@ -96,8 +96,11 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand('extension.search', handleCommandErrors(searchCommand)))
 
     // Register browse-related features.
+    const fs = new BrowseFileSystemProvider()
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
-    vscode.workspace.registerFileSystemProvider('sourcegraph', new BrowseFileSystemProvider(), { isReadonly: true })
+    vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.workspace.registerFileSystemProvider('sourcegraph', fs, { isReadonly: true })
 }
 
 export function deactivate(): void {
