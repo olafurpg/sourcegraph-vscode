@@ -57,13 +57,17 @@ export class BrowseFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Location[] | undefined> {
         const blob = await this.fetchBlob(document.uri)
-        const definition = await graphqlQuery<ReferencesParameters, ReferencesResult>(ReferencesQuery, {
-            repository: blob.repository,
-            revision: blob.revision,
-            path: blob.path,
-            line: position.line,
-            character: position.character,
-        })
+        const definition = await graphqlQuery<ReferencesParameters, ReferencesResult>(
+            ReferencesQuery,
+            {
+                repository: blob.repository,
+                revision: blob.revision,
+                path: blob.path,
+                line: position.line,
+                character: position.character,
+            },
+            token
+        )
         return definition?.data.repository.commit.blob.lsif.references.nodes.map(node => this.nodeToLocation(node))
     }
 
@@ -73,13 +77,17 @@ export class BrowseFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Definition | undefined> {
         const blob = await this.fetchBlob(document.uri)
-        const definition = await graphqlQuery<DefinitionParameters, DefinitionResult>(DefinitionQuery, {
-            repository: blob.repository,
-            revision: blob.revision,
-            path: blob.path,
-            line: position.line,
-            character: position.character,
-        })
+        const definition = await graphqlQuery<DefinitionParameters, DefinitionResult>(
+            DefinitionQuery,
+            {
+                repository: blob.repository,
+                revision: blob.revision,
+                path: blob.path,
+                line: position.line,
+                character: position.character,
+            },
+            token
+        )
         return definition?.data.repository.commit.blob.lsif.definitions.nodes.map(node => this.nodeToLocation(node))
     }
 
@@ -101,13 +109,17 @@ export class BrowseFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
         const blob = await this.fetchBlob(document.uri)
-        const hover = await graphqlQuery<HoverParameters, HoverResult>(HoverQuery, {
-            repository: blob.repository,
-            revision: blob.revision,
-            path: blob.path,
-            line: position.line,
-            character: position.character,
-        })
+        const hover = await graphqlQuery<HoverParameters, HoverResult>(
+            HoverQuery,
+            {
+                repository: blob.repository,
+                revision: blob.revision,
+                path: blob.path,
+                line: position.line,
+                character: position.character,
+            },
+            token
+        )
         if (!hover) {
             return undefined
         }
@@ -117,6 +129,7 @@ export class BrowseFileSystemProvider
     }
 
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
+        log.appendLine(`URI: ${uri.toString(false)}`)
         const blob = await this.fetchBlob(uri)
         return {
             mtime: blob.time,
@@ -173,10 +186,15 @@ export class BrowseFileSystemProvider
         }
         const url = new URL(uri.toString(true).replace('sourcegraph://', 'https://'))
         const parsed = parseBrowserRepoURL(url)
+        const token = new vscode.CancellationTokenSource()
         if (!parsed.revision) {
-            const revisionResult = await graphqlQuery<RevisionParameters, RevisionResult>(RevisionQuery, {
-                repository: parsed.repository,
-            })
+            const revisionResult = await graphqlQuery<RevisionParameters, RevisionResult>(
+                RevisionQuery,
+                {
+                    repository: parsed.repository,
+                },
+                token.token
+            )
             parsed.revision = revisionResult?.data.repositoryRedirect.commit.oid
         }
         if (!parsed.revision) {
@@ -185,11 +203,15 @@ export class BrowseFileSystemProvider
         if (!parsed.path) {
             throw new Error(`no parsed.path from uri ${uri.toString()}`)
         }
-        const blobResult = await graphqlQuery<BlobParameters, BlobResult>(ContentQuery, {
-            repository: parsed.repository,
-            revision: parsed.revision,
-            path: parsed.path,
-        })
+        const blobResult = await graphqlQuery<BlobParameters, BlobResult>(
+            ContentQuery,
+            {
+                repository: parsed.repository,
+                revision: parsed.revision,
+                path: parsed.path,
+            },
+            token.token
+        )
         if (blobResult) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
@@ -205,11 +227,15 @@ export class BrowseFileSystemProvider
             this.cache.set(uri, toCacheResult)
             return toCacheResult
         }
-        const directoryResult = await graphqlQuery<DirectoryParameters, DirectoryResult>(DirectoryQuery, {
-            repository: parsed.repository,
-            revision: parsed.revision,
-            path: parsed.path,
-        })
+        const directoryResult = await graphqlQuery<DirectoryParameters, DirectoryResult>(
+            DirectoryQuery,
+            {
+                repository: parsed.repository,
+                revision: parsed.revision,
+                path: parsed.path,
+            },
+            new vscode.CancellationTokenSource().token
+        )
         if (directoryResult) {
             const children: CheapBlob[] = directoryResult.data.repository.commit.tree.entries.map(entry => ({
                 uri: vscode.Uri.parse(BROWSE_ROOT + entry.url),
