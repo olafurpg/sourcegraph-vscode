@@ -100,6 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
     vscode.workspace.registerFileSystemProvider('sourcegraph', fs, { isReadonly: true })
 }
 

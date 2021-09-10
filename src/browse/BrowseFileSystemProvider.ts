@@ -12,13 +12,21 @@ export class BrowseFileSystemProvider
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
     private readonly cache = new Map<vscode.Uri, Blob>()
 
-    public provideReferences(
+    public async provideReferences(
         document: vscode.TextDocument,
         position: vscode.Position,
         context: vscode.ReferenceContext,
         token: vscode.CancellationToken
-    ): vscode.ProviderResult<vscode.Location[]> {
-        throw new Error('Method not implemented.')
+    ): Promise<vscode.Location[] | undefined> {
+        const blob = await this.fetchBlob(document.uri)
+        const definition = await graphqlQuery<ReferencesParameters, ReferencesResult>(ReferencesQuery, {
+            repository: blob.repository,
+            revision: blob.revision,
+            path: blob.path,
+            line: position.line,
+            character: position.character,
+        })
+        return definition?.data.repository.commit.blob.lsif.references.nodes.map(node => this.nodeToLocation(node))
     }
 
     public async provideDefinition(
@@ -34,16 +42,10 @@ export class BrowseFileSystemProvider
             line: position.line,
             character: position.character,
         })
-        if (!definition) {
-            return undefined
-        }
-        const locations: vscode.Location[] = definition.data.repository.commit.blob.lsif.definitions.nodes.map(node =>
-            this.nodeToLocation(node)
-        )
-        return locations
+        return definition?.data.repository.commit.blob.lsif.definitions.nodes.map(node => this.nodeToLocation(node))
     }
 
-    private nodeToLocation(node: DefinitionNode): vscode.Location {
+    private nodeToLocation(node: LocationNode): vscode.Location {
         log.appendLine(`node=${JSON.stringify(node)}`)
         return new vscode.Location(
             vscode.Uri.parse(
@@ -250,7 +252,7 @@ interface DefinitionResult {
                 blob: {
                     lsif: {
                         definitions: {
-                            nodes: DefinitionNode[]
+                            nodes: LocationNode[]
                         }
                     }
                 }
@@ -258,7 +260,7 @@ interface DefinitionResult {
         }
     }
 }
-interface DefinitionNode {
+interface LocationNode {
     resource: {
         path: string
         repository: {
@@ -344,7 +346,7 @@ interface HoverResult {
         }
     }
 }
-export const HoverQuery = `
+const HoverQuery = `
 query Hover($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
   repository(name: $repository) {
     commit(rev: $revision) {
@@ -363,6 +365,62 @@ query Hover($repository: String!, $revision: String!, $path: String!, $line: Int
                 line
                 character
               }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`
+
+type ReferencesParameters = PositionParameters
+interface ReferencesResult {
+    data: {
+        repository: {
+            commit: {
+                blob: {
+                    lsif: {
+                        references: {
+                            nodes: LocationNode[]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export const ReferencesQuery = `
+query References($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!, $after: String) {
+  repository(name: $repository) {
+    commit(rev: $revision) {
+      blob(path: $path) {
+        lsif {
+          references(line: $line, character: $character, after: $after) {
+            nodes {
+              resource {
+                path
+                repository {
+                  name
+                }
+                commit {
+                  oid
+                }
+              }
+              range {
+                start {
+                  line
+                  character
+                }
+                end {
+                  line
+                  character
+                }
+              }
+            }
+            pageInfo {
+              endCursor
             }
           }
         }
