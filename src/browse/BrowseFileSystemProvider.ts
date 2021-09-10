@@ -53,14 +53,12 @@ export class BrowseFileSystemProvider implements vscode.FileSystemProvider {
         if (result) {
             return result
         }
-        const parsed = parseBrowserRepoURL(new URL(uri.toString()))
+        const url = new URL(uri.toString(true).replace('sourcegraph://', 'https://'))
+        const parsed = parseBrowserRepoURL(url)
         if (!parsed.revision) {
             const revisionResult = await graphqlQuery<RevisionParameters, RevisionResult>(RevisionQuery, {
                 repository: parsed.repository,
-                revision: '',
             })
-
-            log.appendLine(JSON.stringify(revisionResult?.data))
             parsed.revision = revisionResult?.data.repositoryRedirect.commit.oid
         }
         if (!parsed.revision) {
@@ -92,7 +90,6 @@ export class BrowseFileSystemProvider implements vscode.FileSystemProvider {
 // interface StatResult {}
 interface RevisionParameters {
     repository: string
-    revision: string
 }
 interface RevisionResult {
     data: {
@@ -124,7 +121,7 @@ interface BlobResult {
     }
 }
 const RevisionQuery = `
-query Revision($repository: String!, $revision: String!) {
+query Revision($repository: String!) {
   repositoryRedirect(name: $repository) {
     ... on Repository {
       mirrorInfo {
@@ -132,7 +129,7 @@ query Revision($repository: String!, $revision: String!) {
         cloneProgress
         cloned
       }
-      commit(rev: $revision) {
+      commit(rev: "") {
         oid
         tree(path: "") {
           url
