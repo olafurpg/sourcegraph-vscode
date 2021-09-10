@@ -203,7 +203,7 @@ export class BrowseFileSystemProvider
         if (!parsed.path) {
             throw new Error(`no parsed.path from uri ${uri.toString()}`)
         }
-        const blobResult = await graphqlQuery<BlobParameters, BlobResult>(
+        const contentResult = await graphqlQuery<ContentParameters, ContentResult>(
             ContentQuery,
             {
                 repository: parsed.repository,
@@ -212,13 +212,13 @@ export class BrowseFileSystemProvider
             },
             token.token
         )
-        if (blobResult) {
+        if (contentResult) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
                 uri,
                 repository: parsed.repository,
                 revision: parsed.revision,
-                content: encoder.encode(blobResult.data.repository.commit.blob.content),
+                content: encoder.encode(contentResult.data.repository.commit.blob.content),
                 path: parsed.path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
@@ -296,13 +296,13 @@ interface RevisionResult {
         }
     }
 }
-interface BlobParameters {
+interface ContentParameters {
     repository: string
     revision: string
     path: string
 }
 
-interface BlobResult {
+interface ContentResult {
     data: {
         repository: {
             commit: {
