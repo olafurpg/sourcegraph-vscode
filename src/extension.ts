@@ -1,3 +1,6 @@
+// import got from 'got/dist/source'
+    import {execSync } from 'child_process'
+// import shell from 'shelljs'
 import open from 'open'
 import { URL } from 'url'
 import { TextEncoder } from 'util'
@@ -71,42 +74,20 @@ async function browseCommand(): Promise<void> {
     }
 }
 
-interface Arguments {}
-
-function fetch(host: string, faster: Arguments): Promise<any> {
-    throw new Error(`not implemented yet ${host} ${JSON.stringify(faster)}`)
-}
-
-async function graphqlQuery<A, B>(query: string, variables: A): Promise<B | undefined> {
-    const accessToken = process.env.SRC_ACCESS_TOKEN
-    if (!accessToken) {
-        await vscode.window.showErrorMessage('no SRC_ACCESS_TOKEN')
-        return
+function graphqlQuery<A, B>(query: string, variables: A): Promise<B | undefined> {
+    const apiArguments: string[] = []
+    for (const key in variables) {
+        if (Object.prototype.hasOwnProperty.call(variables, key)) {
+           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+           apiArguments.push(`'${key}=${variables[key]}'`)
+        }
     }
-    const endpoint = process.env.SRC_ENDPOINT
-    if (!endpoint) {
-        await vscode.window.showErrorMessage('no SRC_ENDPOINT')
-        return
-    }
+    const command = `src api -query='${query}' ${apiArguments.join(' ')}`
+    // TODO: do direct HTTP query to the GraphQL API instead of shelling out to src.
+    const json = execSync(command).toString()
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const result = await fetch(endpoint, {
-        method: 'post',
-        body: JSON.stringify({
-            query: {},
-            variables: {
-                repository: '',
-                commit: '',
-                path: '',
-            },
-        }),
-        headers: {
-            Authorization: `token ${accessToken}`,
-        },
-    })
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    const response: any = await result.json()
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return response
+    const parsed: B = JSON.parse(json)
+    return Promise.resolve(parsed) // wrap in promise because this method will be async in the future
 }
 
 interface ParsedRepoURI {
@@ -231,16 +212,7 @@ interface BlobResult {
         }
     }
 }
-const ContentQuery = `query Content($repository: String!, $revision: String!, $path: String!) {
-    repository(name: $repository) {
-      commit(rev: $revision) {
-        blob(path: $path) {
-          content
-        }
-      }
-    }
-  }
-  `
+const ContentQuery = 'query Content($repository: String!, $revision: String!, $path: String!) { repository(name: $repository) { commit(rev: $revision) { blob(path: $path) { content } } } } '
 
 class SourcegraphFileSystemProvider implements vscode.FileSystemProvider {
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
