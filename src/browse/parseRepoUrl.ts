@@ -33,7 +33,7 @@ export function repoUriParent(uri: string): string | undefined {
             return `${parsed.url.protocol}//${parsed.url.host}/${parsed.repository}${revision}`
         }
         const lastPartLength = parsed.path.length - slash
-        const parent = uri.slice(0, uri.length - lastPartLength)
+        const parent = uri.slice(0, uri.length - lastPartLength).replace('/-/blob/', '/-/tree/')
         return parent
     } else if (parsed.repository) {
         return `${parsed.url.protocol}//${parsed.url.host}`

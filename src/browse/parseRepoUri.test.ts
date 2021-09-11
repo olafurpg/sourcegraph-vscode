@@ -32,10 +32,10 @@ describe('parseRepoUri', () => {
     })
     checkParent(
         'https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java',
-        'https://sourcegraph.com/jdk@v8/-/blob/java/lang'
+        'https://sourcegraph.com/jdk@v8/-/tree/java/lang'
     )
-    checkParent('https://sourcegraph.com/jdk@v8/-/blob/java/lang', 'https://sourcegraph.com/jdk@v8/-/blob/java')
-    checkParent('https://sourcegraph.com/jdk@v8/-/blob/java', 'https://sourcegraph.com/jdk@v8')
+    checkParent('https://sourcegraph.com/jdk@v8/-/tree/java/lang', 'https://sourcegraph.com/jdk@v8/-/tree/java')
+    checkParent('https://sourcegraph.com/jdk@v8/-/tree/java', 'https://sourcegraph.com/jdk@v8')
     checkParent('https://sourcegraph.com/jdk@v8', 'https://sourcegraph.com')
     checkParent('https://sourcegraph.com', undefined)
 })

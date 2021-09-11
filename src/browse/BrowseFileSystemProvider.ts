@@ -42,10 +42,7 @@ export class BrowseFileSystemProvider
             id,
             label: blob.name,
             tooltip: id.replace('sourcegraph://', 'https://'),
-            collapsibleState:
-                blob.type === vscode.FileType.Directory
-                    ? vscode.TreeItemCollapsibleState.Collapsed
-                    : vscode.TreeItemCollapsibleState.None,
+            collapsibleState: cheapBlobCollapsibleState(blob),
             command,
             resourceUri: blob.uri,
         }
@@ -68,7 +65,7 @@ export class BrowseFileSystemProvider
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
     private readonly cache = new Map<string, Blob>()
     private readonly repos = new Set<string>()
-    private readonly cheapCache = new Map<vscode.Uri, CheapBlob>()
+    private readonly cheapCache = new Map<string, CheapBlob>()
 
     public async provideReferences(
         document: vscode.TextDocument,
@@ -192,7 +189,7 @@ export class BrowseFileSystemProvider
     }
 
     private async fetchCheapBlob(uri: vscode.Uri): Promise<CheapBlob> {
-        const fromCache = this.cheapCache.get(uri)
+        const fromCache = this.cheapCache.get(uri.toString(true))
         if (fromCache) {
             return Promise.resolve(fromCache)
         }
@@ -268,14 +265,14 @@ export class BrowseFileSystemProvider
                     type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
                     children: [],
                     isShallow: true,
+                    isSingleChild: entry.isSingleChild,
                 }
             }
         )
-        if (children) {
+        if (Array.isArray(children)) {
             for (const child of children) {
                 this.updateCheapCache(child)
             }
-
             const toCacheResult: Blob = {
                 uri,
                 repository: parsed.repository,
@@ -284,10 +281,24 @@ export class BrowseFileSystemProvider
                 path: parsed.path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.Directory,
-                children,
+                children: [],
             }
             this.updateCache(toCacheResult)
             this.updateCheapCache(this.makeCheap(toCacheResult))
+
+            for (const child of children) {
+                const parent = repoUriParent(child.uri.toString(true))
+                if (parent) {
+                    const parentBlob = this.cheapCache.get(parent)
+                    if (parentBlob) {
+                        parentBlob.children.push(child)
+                    } else {
+                        const keys = [...this.cheapCache.keys()]
+                        log.appendLine(`repoUriParent child=${child.uri.toString(true)} parent=${parent}`)
+                        log.appendLine(`KEYS: ${keys.join('\n')}`)
+                    }
+                }
+            }
             return toCacheResult
         }
         log.appendLine(`no blob result for ${uri.toString()}`)
@@ -295,7 +306,7 @@ export class BrowseFileSystemProvider
     }
 
     private updateCheapCache(blob: CheapBlob) {
-        this.cheapCache.set(blob.uri, blob)
+        this.cheapCache.set(blob.uri.toString(true), blob)
     }
 
     private updateCache(blob: Blob) {
@@ -322,6 +333,7 @@ export class BrowseFileSystemProvider
             name,
             children: blob.children,
             isShallow: false,
+            isSingleChild: blob.isSingleChild || false,
         }
     }
 }
@@ -330,8 +342,6 @@ function parseUri(uri: vscode.Uri): ParsedRepoURI {
     return parseBrowserRepoURL(new URL(uri.toString(true)))
 }
 
-// interface StatParameters {}
-// interface StatResult {}
 interface RevisionParameters {
     repository: string
 }
@@ -666,7 +676,19 @@ interface CheapBlob {
     name: string
     type: vscode.FileType
     children: CheapBlob[]
+    isSingleChild: boolean
     isShallow: boolean
+}
+
+function cheapBlobCollapsibleState(blob: CheapBlob): vscode.TreeItemCollapsibleState {
+    switch (blob.type) {
+        case vscode.FileType.Directory:
+            return blob.isSingleChild
+                ? vscode.TreeItemCollapsibleState.Expanded
+                : vscode.TreeItemCollapsibleState.Collapsed
+        default:
+            return vscode.TreeItemCollapsibleState.None
+    }
 }
 interface Blob {
     uri: vscode.Uri
@@ -677,4 +699,5 @@ interface Blob {
     time: number
     type: vscode.FileType
     children: CheapBlob[]
+    isSingleChild?: boolean
 }
