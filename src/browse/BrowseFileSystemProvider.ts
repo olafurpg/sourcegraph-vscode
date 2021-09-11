@@ -290,6 +290,9 @@ export class BrowseFileSystemProvider
                     const parentBlob = this.cheapCache.get(parent)
                     if (parentBlob) {
                         parentBlob.children.push(child)
+                        if (child.isSingleChild) {
+                            parentBlob.isShallow = false
+                        }
                     } else {
                         const keys = [...this.cheapCache.keys()]
                         log.appendLine(`repoUriParent child=${child.uri} parent=${parent}`)
