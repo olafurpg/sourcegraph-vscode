@@ -113,7 +113,6 @@ export function activate(context: vscode.ExtensionContext): void {
         })
     )
     vscode.window.onDidChangeActiveTextEditor(editor => {
-        log.appendLine(`DID_CHANGE: ${editor?.document.uri}`)
         if (editor && editor.document.uri.scheme === 'semanticdb') {
             fs.didFocus(editor.document.uri)
         }
