@@ -13,8 +13,19 @@ export class BrowseFileSystemProvider
         vscode.HoverProvider,
         vscode.DefinitionProvider,
         vscode.ReferenceProvider {
+    public treeView: vscode.TreeView<vscode.Uri> | undefined
     private readonly uriEmitter = new vscode.EventEmitter<vscode.Uri | undefined>()
     public readonly onDidChangeTreeData: vscode.Event<vscode.Uri | undefined> = this.uriEmitter.event
+    public async didFocus(uri: vscode.Uri): Promise<void> {
+        log.appendLine(`FOCUS: ${uri.toString(true)}`)
+        if (this.treeView) {
+            await this.treeView.reveal(uri, {
+                focus: true,
+                select: true,
+                expand: 3,
+            })
+        }
+    }
     public async getTreeItem(uri: vscode.Uri): Promise<vscode.TreeItem> {
         const blob = await this.fetchCheapBlob(uri)
         const id = blob.uri.toString(true)
@@ -26,15 +37,17 @@ export class BrowseFileSystemProvider
                       arguments: [id],
                   }
                 : undefined
-        log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
+        // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
         return {
             id,
             label: blob.name,
+            tooltip: id.replace('sourcegraph://', 'https://'),
             collapsibleState:
                 blob.type === vscode.FileType.Directory
                     ? vscode.TreeItemCollapsibleState.Collapsed
                     : vscode.TreeItemCollapsibleState.None,
             command,
+            resourceUri: blob.uri,
         }
     }
     public async getChildren(uri?: vscode.Uri): Promise<vscode.Uri[] | undefined> {
@@ -248,7 +261,7 @@ export class BrowseFileSystemProvider
         const children: CheapBlob[] | undefined = directoryResult?.data?.repository?.commit?.tree?.entries.map(
             entry => {
                 const childUri = vscode.Uri.parse(`sourcegraph://${uri.authority}${entry.url}`)
-                log.appendLine(`childUri=${childUri}`)
+                // log.appendLine(`childUri=${childUri}`)
                 return {
                     uri: childUri,
                     name: entry.name,
@@ -285,21 +298,14 @@ export class BrowseFileSystemProvider
         this.cheapCache.set(blob.uri, blob)
     }
 
-    // private fireUri(uri: vscode.Uri) {
-    //     const parent = repoUriParent(uri.toString(true))
-    //     this.uriEmitter.fire(parent ? vscode.Uri.parse(parent) : undefined)
-    // }
-
     private updateCache(blob: Blob) {
         const repo = repoUriRepository(parseUri(blob.uri))
         this.cache.set(blob.uri.toString(true), blob)
         const isNew = !this.repos.has(repo)
-        log.appendLine(`REPO=${repo} isNew=${isNew}`)
         if (isNew) {
             this.repos.add(repo)
             this.uriEmitter.fire(undefined)
         }
-        // this.fireUri(blob.uri)
     }
 
     private filename(path: string): string {

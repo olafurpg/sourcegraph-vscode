@@ -102,7 +102,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
-    context.subscriptions.push(vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs }))
+    const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs })
+    fs.treeView = treeView
+    context.subscriptions.push(treeView)
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', (uri: string) => {
@@ -110,6 +112,12 @@ export function activate(context: vscode.ExtensionContext): void {
             openFileCommand(vscode.Uri.parse(uri))
         })
     )
+    vscode.window.onDidChangeActiveTextEditor(editor => {
+        log.appendLine(`DID_CHANGE: ${editor?.document.uri}`)
+        if (editor && editor.document.uri.scheme === 'semanticdb') {
+            fs.didFocus(editor.document.uri)
+        }
+    })
 }
 
 export function deactivate(): void {

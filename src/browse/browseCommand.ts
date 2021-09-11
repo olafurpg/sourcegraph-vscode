@@ -4,12 +4,15 @@ import { parseBrowserRepoURL } from './parseRepoUrl'
 
 export async function browseCommand(): Promise<void> {
     const clipboard = await vscode.env.clipboard.readText()
-    const value = clipboard.startsWith('https://sourcegraph.com') ? clipboard : ''
+    const value =
+        clipboard.startsWith('https://sourcegraph.com') || clipboard.startsWith('https://github.com') ? clipboard : ''
     const input = await vscode.window.showInputBox({ value })
 
     if (input) {
-        const uri = vscode.Uri.parse(input.replace('https://', 'sourcegraph://'))
-        await openFileCommand(uri)
+        const uri = input
+            .replace('https://github.com', 'https://sourcegraph/github.com')
+            .replace('https://', 'sourcegraph://')
+        await openFileCommand(vscode.Uri.parse(uri))
     }
 }
 
