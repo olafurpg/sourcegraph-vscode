@@ -112,11 +112,8 @@ export function activate(context: vscode.ExtensionContext): void {
             openFileCommand(vscode.Uri.parse(uri))
         })
     )
-    vscode.window.onDidChangeActiveTextEditor(editor => {
-        if (editor && editor.document.uri.scheme === 'semanticdb') {
-            fs.didFocus(editor.document.uri)
-        }
-    })
+    vscode.window.onDidChangeActiveTextEditor(editor => fs.didFocus(editor?.document.uri))
+    fs.didFocus(vscode.window.activeTextEditor?.document.uri)
 }
 
 export function deactivate(): void {

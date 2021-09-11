@@ -1,6 +1,5 @@
 import { URL } from 'url'
 import * as vscode from 'vscode'
-import { log } from '../log'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
 
 export async function browseCommand(): Promise<void> {
@@ -32,9 +31,6 @@ function offsetRange(line: number, character: number): vscode.Range {
 }
 
 function getSelection(parsed: ParsedRepoURI, textDocument: vscode.TextDocument): vscode.Range | undefined {
-    log.appendLine(
-        `SELECTION uri=${parsed.url} position=${JSON.stringify(parsed.position)} text=${textDocument.getText().length}`
-    )
     if (parsed?.position?.line && parsed?.position?.character) {
         return offsetRange(parsed.position.line - 1, parsed.position.character)
     }
@@ -44,7 +40,6 @@ function getSelection(parsed: ParsedRepoURI, textDocument: vscode.TextDocument):
         const symbolName = fileName.split('.')[0]
         const text = textDocument.getText()
         const symbolMatches = new RegExp(` ${symbolName}\\b`).exec(text)
-        log.appendLine(`REGEXP fileName=${textDocument.fileName} symbolName=${symbolName} ${symbolMatches}`)
         if (symbolMatches) {
             const position = textDocument.positionAt(symbolMatches.index + 1)
             return new vscode.Range(position, position)
