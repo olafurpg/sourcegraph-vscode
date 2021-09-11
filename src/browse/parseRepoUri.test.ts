@@ -1,11 +1,20 @@
 import { URL } from 'url'
 import assert from 'assert'
-import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
-import { spawn } from 'child_process'
+import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent } from './parseRepoUrl'
 
-function check(input: string, expected: ParsedRepoURI) {
-    it(input, () => {
+function check(input: string, expected: Omit<ParsedRepoURI, 'url'>) {
+    it(`parseBrowserRepoURL('${input})'`, () => {
         const obtained = parseBrowserRepoURL(new URL(input))
+        assert.deepStrictEqual(obtained, {
+            url: new URL(input),
+            ...expected,
+        })
+    })
+}
+
+function checkParent(input: string, expected: string | undefined) {
+    it(`checkParent('${input}')`, () => {
+        const obtained = repoUriParent(input)
         assert.deepStrictEqual(obtained, expected)
     })
 }
@@ -21,23 +30,12 @@ describe('parseRepoUri', () => {
         position: undefined,
         range: undefined,
     })
-    it('execFile', async () => {
-        const out = new Promise<string>((resolve, reject) => {
-            const buffer: string[] = []
-            const proc = spawn('src', [])
-            proc.on('data', chunk => {
-                buffer.push(chunk)
-            })
-            const onExit = (exit: number) => {
-                console.log('exit ' + exit)
-                resolve(buffer.join(' a '))
-            }
-            proc.on('disconnect', onExit)
-            proc.on('close', onExit)
-            proc.on('exit', onExit)
-        })
-        const myString = await out
-        console.log(myString)
-        assert.strictEqual(myString, 'a')
-    })
+    checkParent(
+        'https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java',
+        'https://sourcegraph.com/jdk@v8/-/blob/java/lang'
+    )
+    checkParent('https://sourcegraph.com/jdk@v8/-/blob/java/lang', 'https://sourcegraph.com/jdk@v8/-/blob/java')
+    checkParent('https://sourcegraph.com/jdk@v8/-/blob/java', 'https://sourcegraph.com/jdk@v8')
+    checkParent('https://sourcegraph.com/jdk@v8', 'https://sourcegraph.com')
+    checkParent('https://sourcegraph.com', undefined)
 })

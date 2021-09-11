@@ -25,10 +25,17 @@
   ],
   "main": "./out/extension",
   "contributes": {
+    "viewsWelcome": [
+      {"view": "sourcegraph.files", "contents": "[Browse file](command:extension.browse)"}
+    ],
     "commands": [
       {
         "command": "extension.browse",
         "title": "Sourcegraph: Browse"
+      },
+      {
+        "command": "extension.openFile",
+        "title": "Sourcegraph: Open File"
       },
       {
         "command": "extension.open",
@@ -41,7 +48,11 @@
     ],
     "viewsContainers": {
       "activitybar": [
-        {"id": "sourcegraph-view", "title": "Sourcegraph", "icon": "images/logo.png"}
+        {
+          "id": "sourcegraph-view",
+          "title": "Sourcegraph",
+          "icon": "images/logo.png"
+        }
       ]
     },
     "views": {

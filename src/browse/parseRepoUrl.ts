@@ -8,6 +8,7 @@ class Range {
 }
 
 export interface ParsedRepoURI {
+    url: URL
     repository: string
     rawRevision: string | undefined
     commitRange: string | undefined
@@ -16,6 +17,28 @@ export interface ParsedRepoURI {
     path: string | undefined
     position: Position | undefined
     range: Range | undefined
+}
+
+export function repoUriRepository(parsed: ParsedRepoURI): string {
+    const revision = parsed.revision ? `@${parsed.revision}` : ''
+    return `${parsed.url.protocol}//${parsed.url.host}/${parsed.repository}${revision}`
+}
+
+export function repoUriParent(uri: string): string | undefined {
+    const parsed = parseBrowserRepoURL(new URL(uri))
+    if (typeof parsed.path === 'string') {
+        const slash = parsed.path.lastIndexOf('/')
+        if (slash < 0) {
+            const revision = parsed.revision ? `@${parsed.revision}` : ''
+            return `${parsed.url.protocol}//${parsed.url.host}/${parsed.repository}${revision}`
+        }
+        const lastPartLength = parsed.path.length - slash
+        const parent = uri.slice(0, uri.length - lastPartLength)
+        return parent
+    } else if (parsed.repository) {
+        return `${parsed.url.protocol}//${parsed.url.host}`
+    }
+    return undefined
 }
 
 export function parseBrowserRepoURL(url: URL): ParsedRepoURI {
@@ -40,9 +63,6 @@ export function parseBrowserRepoURL(url: URL): ParsedRepoURI {
         repoRevision = pathname.slice(0, indexOfSeparator) // the whole string leading up to the separator (allows revision to be multiple path parts)
     }
     const { repository, revision, rawRevision } = parseRepoRevision(repoRevision)
-    if (!repository) {
-        throw new Error('unexpected repo url: ' + url.toString())
-    }
     const commitID = revision && /^[\da-f]{40}$/i.test(revision) ? revision : undefined
 
     let path: string | undefined
@@ -78,7 +98,7 @@ export function parseBrowserRepoURL(url: URL): ParsedRepoURI {
             }
         }
     }
-    return { repository, revision, rawRevision, commitID, path, commitRange, position, range }
+    return { url, repository, revision, rawRevision, commitID, path, commitRange, position, range }
 }
 
 type LineOrPositionOrRange =

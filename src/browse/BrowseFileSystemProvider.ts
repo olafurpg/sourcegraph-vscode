@@ -2,12 +2,9 @@
 import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { parseBrowserRepoURL } from './parseRepoUrl'
+import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository } from './parseRepoUrl'
 import { graphqlQuery } from './graphqlQuery'
 import { log } from '../log'
-
-const SOURCEGRAPH_ENDPOINT = 'https://sourcegraph.com'
-const BROWSE_ROOT = `sourcegraph://${SOURCEGRAPH_ENDPOINT}`
 
 export class BrowseFileSystemProvider
     implements
@@ -16,38 +13,48 @@ export class BrowseFileSystemProvider
         vscode.HoverProvider,
         vscode.DefinitionProvider,
         vscode.ReferenceProvider {
+    private readonly uriEmitter = new vscode.EventEmitter<vscode.Uri | undefined>()
+    public readonly onDidChangeTreeData: vscode.Event<vscode.Uri | undefined> = this.uriEmitter.event
     public async getTreeItem(uri: vscode.Uri): Promise<vscode.TreeItem> {
         const blob = await this.fetchCheapBlob(uri)
+        const id = blob.uri.toString(true)
+        const command =
+            blob.type === vscode.FileType.File
+                ? {
+                      command: 'extension.openFile',
+                      title: 'Open file',
+                      arguments: [id],
+                  }
+                : undefined
+        log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
         return {
-            id: blob.uri.toString(),
+            id,
             label: blob.name,
             collapsibleState:
                 blob.type === vscode.FileType.Directory
                     ? vscode.TreeItemCollapsibleState.Collapsed
                     : vscode.TreeItemCollapsibleState.None,
+            command,
         }
     }
     public async getChildren(uri?: vscode.Uri): Promise<vscode.Uri[] | undefined> {
         if (!uri) {
-            return Promise.resolve(undefined)
+            return Promise.resolve([...this.repos].map(repo => vscode.Uri.parse(repo)))
         }
-        const blob = await this.fetchCheapBlob(uri)
+        let blob = await this.fetchCheapBlob(uri)
+        if (blob.isShallow) {
+            blob = this.makeCheap(await this.fetchBlob(uri))
+        }
         return blob.children.map(child => child.uri)
     }
     public getParent(uri: vscode.Uri): vscode.Uri | undefined {
-        if (uri.path === '' || uri.path === '/') {
-            return undefined
-        }
-        const uriString = uri.toString()
-        const slash = uriString.lastIndexOf('/')
-        if (slash < 0) {
-            return undefined
-        }
-        return vscode.Uri.parse(uriString.slice(0, slash))
+        const parent = repoUriParent(uri.toString(true))
+        return parent ? vscode.Uri.parse(parent) : undefined
     }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
-    private readonly cache = new Map<vscode.Uri, Blob>()
+    private readonly cache = new Map<string, Blob>()
+    private readonly repos = new Set<string>()
     private readonly cheapCache = new Map<vscode.Uri, CheapBlob>()
 
     public async provideReferences(
@@ -129,7 +136,7 @@ export class BrowseFileSystemProvider
     }
 
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        log.appendLine(`URI: ${uri.toString(false)}`)
+        log.appendLine(`STAT: ${uri.toString(true)}`)
         const blob = await this.fetchBlob(uri)
         return {
             mtime: blob.time,
@@ -180,10 +187,11 @@ export class BrowseFileSystemProvider
         return this.makeCheap(blob)
     }
     private async fetchBlob(uri: vscode.Uri): Promise<Blob> {
-        const result = this.cache.get(uri)
+        const result = this.cache.get(uri.toString(true))
         if (result) {
             return result
         }
+        log.appendLine(`URI: ${uri.toString(true)}`)
         const url = new URL(uri.toString(true).replace('sourcegraph://', 'https://'))
         const parsed = parseBrowserRepoURL(url)
         const token = new vscode.CancellationTokenSource()
@@ -201,7 +209,7 @@ export class BrowseFileSystemProvider
             throw new Error(`no parsed.revision from uri ${uri.toString()}`)
         }
         if (!parsed.path) {
-            throw new Error(`no parsed.path from uri ${uri.toString()}`)
+            parsed.path = ''
         }
         const contentResult = await graphqlQuery<ContentParameters, ContentResult>(
             ContentQuery,
@@ -212,19 +220,20 @@ export class BrowseFileSystemProvider
             },
             token.token
         )
-        if (contentResult) {
+        const content = contentResult?.data?.repository?.commit?.blob?.content
+        if (content) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
                 uri,
                 repository: parsed.repository,
                 revision: parsed.revision,
-                content: encoder.encode(contentResult.data.repository.commit.blob.content),
+                content: encoder.encode(content),
                 path: parsed.path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
                 children: [],
             }
-            this.cache.set(uri, toCacheResult)
+            this.updateCache(toCacheResult)
             return toCacheResult
         }
         const directoryResult = await graphqlQuery<DirectoryParameters, DirectoryResult>(
@@ -236,17 +245,22 @@ export class BrowseFileSystemProvider
             },
             new vscode.CancellationTokenSource().token
         )
-        if (directoryResult) {
-            const children: CheapBlob[] = directoryResult.data.repository.commit.tree.entries.map(entry => ({
-                uri: vscode.Uri.parse(BROWSE_ROOT + entry.url),
-                name: entry.name,
-                type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
-                children: [],
-                isShallow: true,
-            }))
-
+        const children: CheapBlob[] | undefined = directoryResult?.data?.repository?.commit?.tree?.entries.map(
+            entry => {
+                const childUri = vscode.Uri.parse(`sourcegraph://${uri.authority}${entry.url}`)
+                log.appendLine(`childUri=${childUri}`)
+                return {
+                    uri: childUri,
+                    name: entry.name,
+                    type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
+                    children: [],
+                    isShallow: true,
+                }
+            }
+        )
+        if (children) {
             for (const child of children) {
-                this.cheapCache.set(child.uri, child)
+                this.updateCheapCache(child)
             }
 
             const toCacheResult: Blob = {
@@ -259,24 +273,55 @@ export class BrowseFileSystemProvider
                 type: vscode.FileType.Directory,
                 children,
             }
-            this.cache.set(uri, toCacheResult)
-            this.cheapCache.set(uri, this.makeCheap(toCacheResult))
+            this.updateCache(toCacheResult)
+            this.updateCheapCache(this.makeCheap(toCacheResult))
             return toCacheResult
         }
         log.appendLine(`no blob result for ${uri.toString()}`)
         throw new Error(`Not found '${uri.toString()}'`)
     }
 
+    private updateCheapCache(blob: CheapBlob) {
+        this.cheapCache.set(blob.uri, blob)
+    }
+
+    // private fireUri(uri: vscode.Uri) {
+    //     const parent = repoUriParent(uri.toString(true))
+    //     this.uriEmitter.fire(parent ? vscode.Uri.parse(parent) : undefined)
+    // }
+
+    private updateCache(blob: Blob) {
+        const repo = repoUriRepository(parseUri(blob.uri))
+        this.cache.set(blob.uri.toString(true), blob)
+        const isNew = !this.repos.has(repo)
+        log.appendLine(`REPO=${repo} isNew=${isNew}`)
+        if (isNew) {
+            this.repos.add(repo)
+            this.uriEmitter.fire(undefined)
+        }
+        // this.fireUri(blob.uri)
+    }
+
+    private filename(path: string): string {
+        const parts = path.split('/')
+        return parts[parts.length - 1]
+    }
     private makeCheap(blob: Blob): CheapBlob {
-        const parts = blob.uri.path.split('/')
+        const parsed = parseBrowserRepoURL(new URL(blob.uri.toString(true)))
+        const revision = parsed.revision ? `@${parsed.revision}` : ''
+        const name = parsed.path ? this.filename(blob.path) : parsed.repository + revision
         return {
             uri: blob.uri,
             type: blob.type,
-            name: parts[parts.length - 1],
+            name,
             children: blob.children,
             isShallow: false,
         }
     }
+}
+
+function parseUri(uri: vscode.Uri): ParsedRepoURI {
+    return parseBrowserRepoURL(new URL(uri.toString(true)))
 }
 
 // interface StatParameters {}
@@ -303,11 +348,11 @@ interface ContentParameters {
 }
 
 interface ContentResult {
-    data: {
-        repository: {
-            commit: {
-                blob: {
-                    content: string
+    data?: {
+        repository?: {
+            commit?: {
+                blob?: {
+                    content?: string
                 }
             }
         }
@@ -553,10 +598,10 @@ query References($repository: String!, $revision: String!, $path: String!, $line
 `
 
 const DirectoryQuery = `
-query Directory($repoName: String!, $revision: String!, $filePath: String!) {
-  repository(name: $repoName) {
+query Directory($repository: String!, $revision: String!, $path: String!) {
+  repository(name: $repository) {
     commit(rev: "", inputRevspec: $revision) {
-      tree(path: $filePath) {
+      tree(path: $path) {
         ...TreeFields
       }
     }
@@ -589,10 +634,10 @@ interface DirectoryParameters {
     path: string
 }
 interface DirectoryResult {
-    data: {
-        repository: {
-            commit: {
-                tree: {
+    data?: {
+        repository?: {
+            commit?: {
+                tree?: {
                     isRoot: boolean
                     url: string
                     entries: DirectoryEntry[]

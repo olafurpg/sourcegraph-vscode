@@ -2,8 +2,9 @@ import open from 'open'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
-import { browseCommand } from './browse/browseCommand'
+import { browseCommand, openFileCommand } from './browse/browseCommand'
 import { BrowseFileSystemProvider } from './browse/BrowseFileSystemProvider'
+import { log } from './log'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
@@ -101,8 +102,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
-    // context.subscriptions.push(vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs }))
+    context.subscriptions.push(vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs }))
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.openFile', (uri: string) => {
+            log.appendLine(`openFile=${uri}`)
+            openFileCommand(vscode.Uri.parse(uri))
+        })
+    )
 }
 
 export function deactivate(): void {

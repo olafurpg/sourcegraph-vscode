@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
 import { log } from '../log'
+// import { log } from '../log'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
     return new Promise<B | undefined>((resolve, reject) => {
@@ -31,7 +32,6 @@ export function graphqlQuery<A, B>(query: string, variables: A, token: Cancellat
         proc.on('exit', onExit)
         token.onCancellationRequested(() => {
             if (!proc.killed) {
-                log.appendLine('KILL')
                 proc.kill()
                 reject()
             }
