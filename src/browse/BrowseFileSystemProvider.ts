@@ -13,15 +13,51 @@ export class BrowseFileSystemProvider
         vscode.HoverProvider,
         vscode.DefinitionProvider,
         vscode.ReferenceProvider {
-    public treeView: vscode.TreeView<string> | undefined
+    private isTreeViewVisible: boolean = false
+    private isExpandedNode = new Set<string>()
+    private treeView: vscode.TreeView<string> | undefined
+    private activeUri: vscode.Uri | undefined
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.uriEmitter.event
+    public setTreeView(treeView: vscode.TreeView<string>): void {
+        this.treeView = treeView
+        treeView.onDidChangeVisibility(event => {
+            const didBecomeVisible = !this.isTreeViewVisible && event.visible
+            this.isTreeViewVisible = event.visible
+            if (didBecomeVisible) {
+                this.didFocus(this.activeUri)
+            }
+        })
+        treeView.onDidExpandElement(event => {
+            this.isExpandedNode.add(event.element)
+        })
+        treeView.onDidCollapseElement(event => {
+            this.isExpandedNode.delete(event.element)
+        })
+    }
     public async didFocus(uri: vscode.Uri | undefined): Promise<void> {
-        if (uri && uri.scheme === 'sourcegraph' && this.treeView) {
-            await this.treeView.reveal(uri.toString(true), {
+        this.activeUri = uri
+        if (uri && uri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
+            await this.didFocusString(uri.toString(true), true)
+        }
+    }
+    private async didFocusString(uri: string, isDestinationNode: boolean): Promise<void> {
+        if (this.treeView) {
+            const parent = repoUriParent(uri)
+            if (parent && !this.isExpandedNode.has(parent)) {
+                if (
+                    parent ===
+                    'sourcegraph://sourcegraph.com/github.com/sourcegraph/sourcegraph@nsc/dependency_repo_streamline/-/tree/enterprise/cmd/worker/internal/codeintel/indexing/depend'
+                ) {
+                    log.appendLine(`BOOM ${uri}`)
+                }
+                await this.didFocusString(parent, false)
+            }
+            log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
+            await this.treeView.reveal(uri, {
                 focus: true,
-                select: true,
-                expand: 3,
+                select: isDestinationNode,
+                expand: !isDestinationNode,
             })
         }
     }
@@ -199,7 +235,6 @@ export class BrowseFileSystemProvider
         if (result) {
             return result
         }
-        log.appendLine(`URI: ${uri}`)
         const url = new URL(uri.replace('sourcegraph://', 'https://'))
         const parsed = parseBrowserRepoURL(url)
         const token = new vscode.CancellationTokenSource()
@@ -256,7 +291,6 @@ export class BrowseFileSystemProvider
         const children: CheapBlob[] | undefined = directoryResult?.data?.repository?.commit?.tree?.entries.map(
             entry => {
                 const childUri = `sourcegraph://${vscode.Uri.parse(uri).authority}${entry.url}`
-                // log.appendLine(`childUri=${childUri}`)
                 return {
                     uri: childUri,
                     name: entry.name,

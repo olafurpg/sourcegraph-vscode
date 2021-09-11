@@ -27,16 +27,14 @@ export function repoUriRepository(parsed: ParsedRepoURI): string {
 export function repoUriParent(uri: string): string | undefined {
     const parsed = parseBrowserRepoURL(new URL(uri))
     if (typeof parsed.path === 'string') {
-        const slash = parsed.path.lastIndexOf('/')
-        if (slash < 0) {
+        console.log(parsed.path)
+        const slash = uri.lastIndexOf('/')
+        if (slash < 0 || !parsed.path.includes('/')) {
             const revision = parsed.revision ? `@${parsed.revision}` : ''
             return `${parsed.url.protocol}//${parsed.url.host}/${parsed.repository}${revision}`
         }
-        const lastPartLength = parsed.path.length - slash
-        const parent = uri.slice(0, uri.length - lastPartLength).replace('/-/blob/', '/-/tree/')
+        const parent = uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
         return parent
-    } else if (parsed.repository) {
-        return `${parsed.url.protocol}//${parsed.url.host}`
     }
     return undefined
 }

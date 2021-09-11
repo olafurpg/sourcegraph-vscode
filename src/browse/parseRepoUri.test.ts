@@ -34,8 +34,15 @@ describe('parseRepoUri', () => {
         'https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java',
         'https://sourcegraph.com/jdk@v8/-/tree/java/lang'
     )
+    checkParent(
+        'https://sourcegraph.com/github.com/sourcegraph@v8/-/blob/indexing/dependency_indexing_scheduler_test.go',
+        'https://sourcegraph.com/github.com/sourcegraph@v8/-/tree/indexing'
+    )
+    checkParent(
+        'https://sourcegraph.com/github.com/sourcegraph/-/blob/indexing/dependency_indexing_scheduler_test.go#L102:1',
+        'https://sourcegraph.com/github.com/sourcegraph/-/tree/indexing'
+    )
     checkParent('https://sourcegraph.com/jdk@v8/-/tree/java/lang', 'https://sourcegraph.com/jdk@v8/-/tree/java')
     checkParent('https://sourcegraph.com/jdk@v8/-/tree/java', 'https://sourcegraph.com/jdk@v8')
-    checkParent('https://sourcegraph.com/jdk@v8', 'https://sourcegraph.com')
-    checkParent('https://sourcegraph.com', undefined)
+    checkParent('https://sourcegraph.com/jdk@v8', undefined)
 })

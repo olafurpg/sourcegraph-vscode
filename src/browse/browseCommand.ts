@@ -1,5 +1,6 @@
 import { URL } from 'url'
 import * as vscode from 'vscode'
+import { log } from '../log'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
 
 export async function browseCommand(): Promise<void> {
@@ -12,6 +13,8 @@ export async function browseCommand(): Promise<void> {
         const uri = input
             .replace('https://github.com', 'https://sourcegraph/github.com')
             .replace('https://', 'sourcegraph://')
+            .replace(/#.*/, '')
+        log.appendLine(`START ${uri}`)
         await openFileCommand(vscode.Uri.parse(uri))
     }
 }
