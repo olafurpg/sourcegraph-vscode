@@ -102,7 +102,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
-    const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs })
+    const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs, showCollapseAll: true })
     fs.treeView = treeView
     context.subscriptions.push(treeView)
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
