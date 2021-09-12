@@ -12,6 +12,12 @@ export interface RepositoryFile {
     repositoryLabel: string
     fileNames: string[]
 }
+interface RepositoryMetadata {
+    defaultOid?: string
+    defaultAbbreviatedOid?: string
+    defaultBranch?: string
+    commitToReferenceName?: Map<string, string>
+}
 
 export class BrowseFileSystemProvider
     implements
@@ -25,6 +31,7 @@ export class BrowseFileSystemProvider
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
     private files: Map<string, Promise<string[]>> = new Map()
+    private metadata: Map<string, RepositoryMetadata> = new Map()
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
     private readonly repoEmitter = new vscode.EventEmitter<string>()
     public onNewRepo = this.repoEmitter.event
@@ -86,7 +93,8 @@ export class BrowseFileSystemProvider
         try {
             // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
             const parsed = parseUri(uri)
-            const label = parsed.path ? this.filename(parsed.path) : parsed.repository
+            const revision = parsed.revision ? ` (${parsed.revision})` : ''
+            const label = parsed.path ? this.filename(parsed.path) : `${parsed.repository}${revision}`
             const isFile = uri.includes('/-/blob/')
             const isDirectory = !isFile
             const collapsibleState = await this.getCollapsibleState(uri, isDirectory)
@@ -125,10 +133,9 @@ export class BrowseFileSystemProvider
         return isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     }
     private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
-        // if (typeof parsed.path === 'undefined') {
-        //     log.appendLine(`getFileTree - empty parsed.path`)
-        //     return Promise.resolve(undefined)
-        // }
+        if (!parsed.revision) {
+            parsed.revision = this.metadata.get(parsed.repository)?.defaultOid
+        }
         const downloadingKey = repoUriRepository(parsed)
         const downloading = this.files.get(downloadingKey)
         if (!downloading) {
@@ -149,7 +156,6 @@ export class BrowseFileSystemProvider
         try {
             if (!uri) {
                 const repos = [...this.repos]
-                // log.appendLine(`getChildren(undefined) repos=${JSON.stringify(repos)}`)
                 return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
             }
             const parsed = parseUri(uri)
@@ -321,7 +327,7 @@ export class BrowseFileSystemProvider
 
     public async defaultFileUri(repository: string): Promise<string> {
         const token = new vscode.CancellationTokenSource()
-        const revision = await defaultRevision(repository, token.token)
+        const revision = (await this.defaultRevision(repository, token.token))?.defaultOid
         if (!revision) {
             log.appendLine(`ERROR defaultFileUri no revision ${repository}`)
             throw new Error(`ERROR defaultFileUri no revision ${repository}`)
@@ -350,7 +356,7 @@ export class BrowseFileSystemProvider
         const parsed = parseBrowserRepoURL(url)
         const token = new vscode.CancellationTokenSource()
         if (!parsed.revision) {
-            parsed.revision = await defaultRevision(parsed.repository, token.token)
+            parsed.revision = (await this.defaultRevision(parsed.repository, token.token))?.defaultOid
         }
         if (!parsed.revision) {
             throw new Error(`no parsed.revision from uri ${uri.toString()}`)
@@ -403,6 +409,26 @@ export class BrowseFileSystemProvider
         return parts[parts.length - 1]
     }
 
+    public async defaultRevision(
+        repository: string,
+        token: vscode.CancellationToken
+    ): Promise<RepositoryMetadata | undefined> {
+        const response = await graphqlQuery<RevisionParameters, RevisionResult>(
+            RevisionQuery,
+            {
+                repository: repository,
+            },
+            token
+        )
+        const metadata: RepositoryMetadata = {
+            defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
+            defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
+            defaultBranch: response?.data?.repositoryRedirect?.commit?.oid,
+        }
+        this.metadata.set(repository, metadata)
+        return metadata
+    }
+
     downloadFiles(parsed: ParsedRepoURI, revision: string): Promise<string[]> {
         const key = repoUriRepository(parsed)
         let downloadingFiles = this.files.get(key)
@@ -433,13 +459,42 @@ interface RevisionResult {
         repositoryRedirect?: {
             commit?: {
                 oid?: string
+                abbreviatedOID?: string
                 tree?: {
                     url?: string
                 }
             }
+            defaultBranch?: {
+                abbrevName?: string
+            }
         }
     }
 }
+const RevisionQuery = `
+query Revision($repository: String!) {
+  repositoryRedirect(name: $repository) {
+    ... on Repository {
+      mirrorInfo {
+        cloneInProgress
+        cloneProgress
+        cloned
+      }
+      commit(rev: "") {
+        oid
+        abbreviatedOID
+        tree(path: "") {
+          url
+        }
+      }
+      defaultBranch {
+        abbrevName
+      }
+    }
+    ... on Redirect {
+      url
+    }
+  }
+}`
 interface ContentParameters {
     repository: string
     revision: string
@@ -457,31 +512,6 @@ interface ContentResult {
         }
     }
 }
-
-const RevisionQuery = `
-query Revision($repository: String!) {
-  repositoryRedirect(name: $repository) {
-    ... on Repository {
-      mirrorInfo {
-        cloneInProgress
-        cloneProgress
-        cloned
-      }
-      commit(rev: "") {
-        oid
-        tree(path: "") {
-          url
-        }
-      }
-      defaultBranch {
-        abbrevName
-      }
-    }
-    ... on Redirect {
-      url
-    }
-  }
-}`
 export const ContentQuery = `
 query Content($repository: String!, $revision: String!, $path: String!) {
   repository(name: $repository) {
@@ -785,18 +815,4 @@ interface Blob {
     content: Uint8Array
     time: number
     type: vscode.FileType
-}
-
-export async function defaultRevision(
-    repository: string,
-    token: vscode.CancellationToken
-): Promise<string | undefined> {
-    const result = await graphqlQuery<RevisionParameters, RevisionResult>(
-        RevisionQuery,
-        {
-            repository: repository,
-        },
-        token
-    )
-    return result?.data?.repositoryRedirect?.commit?.oid
 }
