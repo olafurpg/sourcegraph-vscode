@@ -89,12 +89,26 @@ export class BrowseFileSystemProvider
             log.appendLine(`ERROR: didFocusString(${uri}) error=${error}`)
         }
     }
+    private async treeItemLabel(parsed: ParsedRepoURI): Promise<string> {
+        if (parsed.path) {
+            return this.filename(parsed.path)
+        }
+        const metadata = await this.repositoryMetadata(parsed.repository, emptyCancelationToken())
+        let revision = parsed.revision
+        log.appendLine(
+            `TREE_ITEM_LABEL ${parsed.revision} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
+        )
+        if (metadata?.defaultBranch && (!revision || revision === metadata?.defaultOid)) {
+            revision = metadata.defaultBranch
+        }
+        return `${parsed.repository}@${revision}`
+    }
+
     public async getTreeItem(uri: string): Promise<vscode.TreeItem> {
         try {
             // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
             const parsed = parseUri(uri)
-            const revision = parsed.revision ? ` (${parsed.revision})` : ''
-            const label = parsed.path ? this.filename(parsed.path) : `${parsed.repository}${revision}`
+            const label = await this.treeItemLabel(parsed)
             const isFile = uri.includes('/-/blob/')
             const isDirectory = !isFile
             const collapsibleState = await this.getCollapsibleState(uri, isDirectory)
@@ -134,7 +148,7 @@ export class BrowseFileSystemProvider
     }
     private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
         if (!parsed.revision) {
-            parsed.revision = this.metadata.get(parsed.repository)?.defaultOid
+            parsed.revision = this.metadata.get(parsed.repository)?.defaultBranch
         }
         const downloadingKey = repoUriRepository(parsed)
         const downloading = this.files.get(downloadingKey)
@@ -327,7 +341,7 @@ export class BrowseFileSystemProvider
 
     public async defaultFileUri(repository: string): Promise<string> {
         const token = new vscode.CancellationTokenSource()
-        const revision = (await this.defaultRevision(repository, token.token))?.defaultOid
+        const revision = (await this.repositoryMetadata(repository, token.token))?.defaultBranch
         if (!revision) {
             log.appendLine(`ERROR defaultFileUri no revision ${repository}`)
             throw new Error(`ERROR defaultFileUri no revision ${repository}`)
@@ -356,7 +370,7 @@ export class BrowseFileSystemProvider
         const parsed = parseBrowserRepoURL(url)
         const token = new vscode.CancellationTokenSource()
         if (!parsed.revision) {
-            parsed.revision = (await this.defaultRevision(parsed.repository, token.token))?.defaultOid
+            parsed.revision = (await this.repositoryMetadata(parsed.repository, token.token))?.defaultBranch
         }
         if (!parsed.revision) {
             throw new Error(`no parsed.revision from uri ${uri.toString()}`)
@@ -409,7 +423,7 @@ export class BrowseFileSystemProvider
         return parts[parts.length - 1]
     }
 
-    public async defaultRevision(
+    public async repositoryMetadata(
         repository: string,
         token: vscode.CancellationToken
     ): Promise<RepositoryMetadata | undefined> {
@@ -423,7 +437,7 @@ export class BrowseFileSystemProvider
         const metadata: RepositoryMetadata = {
             defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
             defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
-            defaultBranch: response?.data?.repositoryRedirect?.commit?.oid,
+            defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
         }
         this.metadata.set(repository, metadata)
         return metadata
@@ -815,4 +829,8 @@ interface Blob {
     content: Uint8Array
     time: number
     type: vscode.FileType
+}
+
+function emptyCancelationToken(): vscode.CancellationToken {
+    return new vscode.CancellationTokenSource().token
 }
