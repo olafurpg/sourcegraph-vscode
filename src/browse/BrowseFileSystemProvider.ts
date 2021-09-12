@@ -5,6 +5,7 @@ import * as vscode from 'vscode'
 import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository } from './parseRepoUrl'
 import { graphqlQuery } from './graphqlQuery'
 import { log } from '../log'
+import { FileTree } from './FileTree'
 
 export class BrowseFileSystemProvider
     implements
@@ -87,17 +88,26 @@ export class BrowseFileSystemProvider
         if (!uri) {
             return Promise.resolve([...this.repos])
         }
-        // const parsed = parseUri(uri)
-        // const files = this.files.get(parsed.repository)
-        // if (!files) {
-        //     return Promise.resolve(undefined)
-        // }
-
-        let blob = await this.fetchCheapBlob(uri)
-        if (blob.isShallow) {
-            blob = this.makeCheap(await this.fetchBlob(uri))
+        const parsed = parseUri(uri)
+        if (!parsed.path) {
+            return Promise.resolve(undefined)
         }
-        return blob.children.map(child => child.uri)
+        const downloading = this.files.get(parsed.repository)
+        if (!downloading) {
+            return Promise.resolve(undefined)
+        }
+        const files = (await downloading)?.data?.repository?.commit?.fileNames
+        if (!files) {
+            return Promise.resolve(undefined)
+        }
+        const tree = new FileTree(parsed, files)
+        const children = tree.directChildren(parsed.path)
+        return children
+        // let blob = await this.fetchCheapBlob(uri)
+        // if (blob.isShallow) {
+        //     blob = this.makeCheap(await this.fetchBlob(uri))
+        // }
+        // return blob.children.map(child => child.uri)
     }
     public getParent(uri: string): string | undefined {
         return repoUriParent(uri)
