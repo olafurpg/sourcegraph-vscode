@@ -36,7 +36,7 @@ export class BrowseQuickPick {
                         isAllFilesEnabled = true
                         pick.busy = true
                         const allFiles = await fs.allFileFromOpenRepositories()
-                        log.appendLine(`ALL_FILES ${JSON.stringify(allFiles)}`)
+                        // log.appendLine(`ALL_FILES ${JSON.stringify(allFiles)}`)
                         pick.busy = false
                         const newItems: BrowseQuickPickItem[] = []
                         for (const repo of allFiles) {
