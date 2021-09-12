@@ -46,6 +46,7 @@ query RepositoriesForPopover($query: String, $first: Int) {
   repositories(first: $first, query: $query) {
     nodes {
       name
+      isFork
     }
     totalCount
     pageInfo {
@@ -63,7 +64,7 @@ export async function repositories(query: string): Promise<string[]> {
         },
         new vscode.CancellationTokenSource().token
     )
-    return result?.data?.repositories?.nodes?.map(node => node.name) || []
+    return result?.data?.repositories?.nodes?.filter(node => !node.isFork).map(node => node.name) || []
 }
 
 interface RepositoryParameters {
@@ -81,4 +82,5 @@ interface RepositoryResult {
 }
 interface RepositoryNode {
     name: string
+    isFork: boolean
 }

@@ -7,6 +7,7 @@ import { parseBrowserRepoURL } from './parseRepoUrl'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
+    repo?: string
 }
 export class BrowseQuickPick {
     public getBrowseUri(fs?: BrowseFileSystemProvider): Promise<string> {
@@ -39,7 +40,8 @@ export class BrowseQuickPick {
                     const repos = await repositories(query)
                     pick.items = repos.map(repo => ({
                         label: `repo:${repo}`,
-                        uri: `sourcegraph://sourcegraph.com/${repo}/-/blob/README.md`,
+                        uri: ``,
+                        repo,
                     }))
                     pick.busy = false
                 } else if (fs) {
@@ -84,8 +86,11 @@ export class BrowseQuickPick {
                     selection = items[items.length - 1]
                 }
             })
-            pick.onDidAccept(() => {
+            pick.onDidAccept(async () => {
                 if (selection) {
+                    if (fs && selection.repo) {
+                        selection.uri = await fs.defaultFileUri(selection.repo)
+                    }
                     resolve(selection.uri)
                 }
                 pick.dispose()

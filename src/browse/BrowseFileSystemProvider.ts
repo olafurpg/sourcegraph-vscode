@@ -24,7 +24,7 @@ export class BrowseFileSystemProvider
     private isExpandedNode = new Set<string>()
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
-    private files: Map<string, Promise<FilesResult | undefined>> = new Map()
+    private files: Map<string, Promise<string[]>> = new Map()
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
     private readonly repoEmitter = new vscode.EventEmitter<string>()
     public onNewRepo = this.repoEmitter.event
@@ -47,13 +47,13 @@ export class BrowseFileSystemProvider
     }
     public async allFileFromOpenRepositories(): Promise<RepositoryFile[]> {
         const promises: RepositoryFile[] = []
-        for (const [repository, value] of this.files.entries()) {
-            const result = await value
+        for (const [repository, downloadingFileNames] of this.files.entries()) {
+            const fileNames = await downloadingFileNames
             const parsed = parseUri(repository)
             promises.push({
                 repositoryUri: repository,
                 repositoryLabel: `${parsed.repository}${repoUriRevision(parsed)}`,
-                fileNames: result?.data?.repository?.commit?.fileNames || [],
+                fileNames,
             })
         }
         return promises
@@ -125,10 +125,10 @@ export class BrowseFileSystemProvider
         return isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     }
     private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
-        if (typeof parsed.path === 'undefined') {
-            log.appendLine(`getFileTree - empty parsed.path`)
-            return Promise.resolve(undefined)
-        }
+        // if (typeof parsed.path === 'undefined') {
+        //     log.appendLine(`getFileTree - empty parsed.path`)
+        //     return Promise.resolve(undefined)
+        // }
         const downloadingKey = repoUriRepository(parsed)
         const downloading = this.files.get(downloadingKey)
         if (!downloading) {
@@ -137,7 +137,7 @@ export class BrowseFileSystemProvider
             )
             return Promise.resolve(undefined)
         }
-        const files = (await downloading)?.data?.repository?.commit?.fileNames
+        const files = await downloading
         if (!files) {
             log.appendLine(`getFileTree - empty files`)
             return Promise.resolve(undefined)
@@ -279,6 +279,7 @@ export class BrowseFileSystemProvider
     public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
         if (uri.toString(true).endsWith('/-')) return Promise.resolve([])
         log.appendLine(`READ_DIRECTORY ${uri.toString(true)}`)
+        await this.fetchBlob(uri.toString(true))
         const parsed = parseUri(uri.toString(true))
         if (typeof parsed.path === 'undefined') {
             parsed.path = ''
@@ -318,6 +319,28 @@ export class BrowseFileSystemProvider
         throw new Error('Method not supported.')
     }
 
+    public async defaultFileUri(repository: string): Promise<string> {
+        const token = new vscode.CancellationTokenSource()
+        const revision = await defaultRevision(repository, token.token)
+        if (!revision) {
+            log.appendLine(`ERROR defaultFileUri no revision ${repository}`)
+            throw new Error(`ERROR defaultFileUri no revision ${repository}`)
+        }
+        const uri = `sourcegraph://sourcegraph.com/${repository}@${revision}`
+        const files = await this.downloadFiles(parseUri(uri), revision)
+        const readmes = files.filter(name => name.match(/readme/i))
+        const candidates = readmes ? readmes : files
+        let readme: string | undefined
+        for (const candidate of candidates) {
+            if (!readme) {
+                readme = candidate
+            } else if (candidate.length < readme.length) {
+                readme = candidate
+            }
+        }
+        const defaultFile = readme ? readme : files[0]
+        return `sourcegraph://sourcegraph.com/${repository}@${revision}/-/blob/${defaultFile}`
+    }
     private async fetchBlob(uri: string): Promise<Blob> {
         const result = this.cache.get(uri)
         if (result) {
@@ -327,14 +350,7 @@ export class BrowseFileSystemProvider
         const parsed = parseBrowserRepoURL(url)
         const token = new vscode.CancellationTokenSource()
         if (!parsed.revision) {
-            const revisionResult = await graphqlQuery<RevisionParameters, RevisionResult>(
-                RevisionQuery,
-                {
-                    repository: parsed.repository,
-                },
-                token.token
-            )
-            parsed.revision = revisionResult?.data.repositoryRedirect.commit.oid
+            parsed.revision = await defaultRevision(parsed.repository, token.token)
         }
         if (!parsed.revision) {
             throw new Error(`no parsed.revision from uri ${uri.toString()}`)
@@ -351,22 +367,7 @@ export class BrowseFileSystemProvider
             },
             token.token
         )
-        const downloadingKey = repoUriRepository(parsed)
-        const downloadingFiles = this.files.get(downloadingKey)
-        if (!downloadingFiles) {
-            this.files.set(
-                downloadingKey,
-                // parsed.repository,
-                graphqlQuery<FilesParameters, FilesResult>(
-                    FilesQuery,
-                    {
-                        repository: parsed.repository,
-                        revision: parsed.revision,
-                    },
-                    new vscode.CancellationTokenSource().token
-                )
-            )
-        }
+        this.downloadFiles(parsed, parsed.revision)
         const content = contentResult?.data?.repository?.commit?.blob?.content
         if (content) {
             const encoder = new TextEncoder()
@@ -401,6 +402,23 @@ export class BrowseFileSystemProvider
         const parts = path.split('/')
         return parts[parts.length - 1]
     }
+
+    downloadFiles(parsed: ParsedRepoURI, revision: string): Promise<string[]> {
+        const key = repoUriRepository(parsed)
+        let downloadingFiles = this.files.get(key)
+        if (!downloadingFiles) {
+            downloadingFiles = graphqlQuery<FilesParameters, FilesResult>(
+                FilesQuery,
+                {
+                    repository: parsed.repository,
+                    revision,
+                },
+                new vscode.CancellationTokenSource().token
+            ).then(result => result?.data?.repository?.commit?.fileNames || [])
+            this.files.set(key, downloadingFiles)
+        }
+        return downloadingFiles
+    }
 }
 
 function parseUri(uri: string): ParsedRepoURI {
@@ -411,12 +429,12 @@ interface RevisionParameters {
     repository: string
 }
 interface RevisionResult {
-    data: {
-        repositoryRedirect: {
-            commit: {
-                oid: string
-                tree: {
-                    url: string
+    data?: {
+        repositoryRedirect?: {
+            commit?: {
+                oid?: string
+                tree?: {
+                    url?: string
                 }
             }
         }
@@ -767,4 +785,18 @@ interface Blob {
     content: Uint8Array
     time: number
     type: vscode.FileType
+}
+
+export async function defaultRevision(
+    repository: string,
+    token: vscode.CancellationToken
+): Promise<string | undefined> {
+    const result = await graphqlQuery<RevisionParameters, RevisionResult>(
+        RevisionQuery,
+        {
+            repository: repository,
+        },
+        token
+    )
+    return result?.data?.repositoryRedirect?.commit?.oid
 }
