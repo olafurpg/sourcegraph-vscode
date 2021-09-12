@@ -4,10 +4,14 @@ export class FileTree {
     constructor(readonly uri: ParsedRepoURI, readonly files: string[]) {
         files.sort()
     }
+    public toString(): string {
+        return `FileTree(${this.uri.url.toString()}, files.length=${this.files.length})`
+    }
 
     public directChildren(directory: string): string[] {
         const depth = this.depth(directory)
-        const result = new Set<string>()
+        const directFiles = new Set<string>()
+        const directDirectories = new Set<string>()
         const isRoot = directory === ''
         if (!isRoot && !directory.endsWith('/')) {
             directory = directory + '/'
@@ -21,12 +25,12 @@ export class FileTree {
                 const isDirect = isRoot ? fileDepth === 0 : fileDepth === depth + 1
                 const path = isDirect ? file : file.slice(0, file.indexOf('/', directory.length))
                 const kind = isDirect ? 'blob' : 'tree'
-                result.add(
-                    `${this.uri.url.protocol}//${this.uri.url.host}/${this.uri.repository}${revision}/-/${kind}/${path}`
-                )
+                const uri = `sourcegraph://${this.uri.url.host}/${this.uri.repository}${revision}/-/${kind}/${path}`
+                if (isDirect) directFiles.add(uri)
+                else directDirectories.add(uri)
             }
         }
-        return [...result]
+        return [...directDirectories, ...directFiles]
     }
 
     private depth(path: string): number {

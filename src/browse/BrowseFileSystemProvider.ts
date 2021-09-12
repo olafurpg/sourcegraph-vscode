@@ -72,21 +72,17 @@ export class BrowseFileSystemProvider
             let collapsibleState = isDirectory
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None
-            // const parent = repoUriParent(uri)
-            // if (isDirectory && parent) {
-            //     const parsedParent = parseUri(parent)
-            //     if (parsedParent.path) {
-            //         const tree = await this.getFileTree(parsedParent)
-            //         const directChildren = tree?.directChildren(parsedParent.path)
-            //         if (directChildren && directChildren.length === 1) {
-            //             collapsibleState = vscode.TreeItemCollapsibleState.Expanded
-            //         }
-            //     }
-            // }
-            // const tree = await this.getFileTree(parsed)
-            // if (!tree) {
-            //     return Promise.resolve({})
-            // }
+            const parent = repoUriParent(uri)
+            if (isDirectory && parent) {
+                const parsedParent = parseUri(parent)
+                if (parsedParent.path) {
+                    const tree = await this.getFileTree(parsedParent)
+                    const directChildren = tree?.directChildren(parsedParent.path)
+                    if (directChildren && directChildren.length === 1) {
+                        collapsibleState = vscode.TreeItemCollapsibleState.Expanded
+                    }
+                }
+            }
             const command = isFile
                 ? {
                       command: 'extension.openFile',
@@ -109,15 +105,18 @@ export class BrowseFileSystemProvider
         }
     }
     private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
-        if (!parsed.path) {
+        if (typeof parsed.path === 'undefined') {
+            log.appendLine(`getFileTree - empty parsed.path`)
             return Promise.resolve(undefined)
         }
         const downloading = this.files.get(parsed.repository)
         if (!downloading) {
+            log.appendLine(`getFileTree - empty downloading`)
             return Promise.resolve(undefined)
         }
         const files = (await downloading)?.data?.repository?.commit?.fileNames
         if (!files) {
+            log.appendLine(`getFileTree - empty files`)
             return Promise.resolve(undefined)
         }
         return new FileTree(parsed, files)
@@ -128,10 +127,11 @@ export class BrowseFileSystemProvider
                 return Promise.resolve([...this.repos])
             }
             const parsed = parseUri(uri)
-            if (!parsed.path) {
+            if (typeof parsed.path === 'undefined') {
                 parsed.path = ''
             }
             const tree = await this.getFileTree(parsed)
+            log.appendLine(`getChildren(${uri}) path=${parsed.path} tree=${tree}`)
             return tree?.directChildren(parsed.path)
         } catch (error) {
             log.appendLine(`ERROR: getChildren(${uri}) error=${error}`)
@@ -297,7 +297,7 @@ export class BrowseFileSystemProvider
         if (!parsed.revision) {
             throw new Error(`no parsed.revision from uri ${uri.toString()}`)
         }
-        if (!parsed.path) {
+        if (typeof parsed.path === 'undefined') {
             parsed.path = ''
         }
         const contentResult = await graphqlQuery<ContentParameters, ContentResult>(
@@ -421,7 +421,7 @@ export class BrowseFileSystemProvider
     private makeCheap(blob: Blob): CheapBlob {
         const parsed = parseBrowserRepoURL(new URL(blob.uri))
         const revision = parsed.revision ? `@${parsed.revision}` : ''
-        const name = parsed.path ? this.filename(blob.path) : parsed.repository + revision
+        const name = typeof parsed.path === 'undefined' ? this.filename(blob.path) : parsed.repository + revision
         return {
             uri: blob.uri,
             type: blob.type,
