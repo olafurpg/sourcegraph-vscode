@@ -13,7 +13,8 @@ export class BrowseQuickPick {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
-            pick.title = 'Open a Sourcegraph URL or use repo:QUERY to open a repository'
+            pick.title = 'Open a file, paste a Sourcegraph URL or type repo:QUERY to open a repository'
+            pick.matchOnDescription
             let isAllFilesEnabled = false
             const onDidChangeValue = async (value: string) => {
                 log.appendLine(`VALUE: ${value}`)
@@ -21,7 +22,7 @@ export class BrowseQuickPick {
                     const parsed = parseBrowserRepoURL(new URL(value))
                     if (parsed.path) {
                         const item: BrowseQuickPickItem = {
-                            uri: value.replace('https://', 'sourcegraph://').replace(/#.*$/, ''),
+                            uri: value.replace('https://', 'sourcegraph://').replace(/#.*/, '').replace(/\?.*/, ''),
                             label: value,
                             detail: `${parsed.repository}/-/${parsed.path}`,
                         }
@@ -52,6 +53,9 @@ export class BrowseQuickPick {
                         const newItems: BrowseQuickPickItem[] = []
                         for (const repo of allFiles) {
                             for (const file of repo.fileNames) {
+                                if (file === '') {
+                                    continue
+                                }
                                 const uri = `${repo.repositoryUri}/-/blob/${file}`
                                 const label = `${file} - ${repo.repositoryLabel}`
                                 newItems.push({

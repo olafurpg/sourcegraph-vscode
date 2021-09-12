@@ -28,6 +28,7 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
 async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
     try {
         const uri = await new BrowseQuickPick().getBrowseUri(fs)
+        log.appendLine(`QUICK_PICK_RESULT ${uri}`)
         await openFileCommand(vscode.Uri.parse(uri))
     } catch (error) {
         log.appendLine(`ERROR: ${error}`)
