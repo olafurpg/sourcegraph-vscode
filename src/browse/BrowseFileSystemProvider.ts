@@ -129,7 +129,7 @@ export class BrowseFileSystemProvider
             log.appendLine(`getFileTree - empty parsed.path`)
             return Promise.resolve(undefined)
         }
-        const downloading = this.files.get(parsed.repository)
+        const downloading = this.files.get(repoUriRepository(parsed))
         if (!downloading) {
             log.appendLine(`getFileTree - empty downloading`)
             return Promise.resolve(undefined)
