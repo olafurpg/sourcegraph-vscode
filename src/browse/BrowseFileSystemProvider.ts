@@ -64,31 +64,51 @@ export class BrowseFileSystemProvider
         }
     }
     public async getTreeItem(uri: string): Promise<vscode.TreeItem> {
-        const blob = await this.fetchCheapBlob(uri)
-        const id = blob.uri
-        const command =
-            blob.type === vscode.FileType.File
+        try {
+            const parsed = parseUri(uri)
+            const label = parsed.path ? this.filename(parsed.path) : parsed.repository
+            const isFile = uri.includes('/-/blob/')
+            const isDirectory = !isFile
+            let collapsibleState = isDirectory
+                ? vscode.TreeItemCollapsibleState.Collapsed
+                : vscode.TreeItemCollapsibleState.None
+            // const parent = repoUriParent(uri)
+            // if (isDirectory && parent) {
+            //     const parsedParent = parseUri(parent)
+            //     if (parsedParent.path) {
+            //         const tree = await this.getFileTree(parsedParent)
+            //         const directChildren = tree?.directChildren(parsedParent.path)
+            //         if (directChildren && directChildren.length === 1) {
+            //             collapsibleState = vscode.TreeItemCollapsibleState.Expanded
+            //         }
+            //     }
+            // }
+            // const tree = await this.getFileTree(parsed)
+            // if (!tree) {
+            //     return Promise.resolve({})
+            // }
+            const command = isFile
                 ? {
                       command: 'extension.openFile',
                       title: 'Open file',
-                      arguments: [id],
+                      arguments: [uri],
                   }
                 : undefined
-        // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
-        return {
-            id,
-            label: blob.name,
-            tooltip: id.replace('sourcegraph://', 'https://'),
-            collapsibleState: cheapBlobCollapsibleState(blob),
-            command,
-            resourceUri: vscode.Uri.parse(blob.uri),
+            // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
+            return {
+                id: uri,
+                label,
+                tooltip: uri.replace('sourcegraph://', 'https://'),
+                collapsibleState,
+                command,
+                resourceUri: vscode.Uri.parse(uri),
+            }
+        } catch (error) {
+            log.appendLine(`ERROR: getTreeItem(${uri}) error=${error}`)
+            return Promise.resolve({})
         }
     }
-    public async getChildren(uri?: string): Promise<string[] | undefined> {
-        if (!uri) {
-            return Promise.resolve([...this.repos])
-        }
-        const parsed = parseUri(uri)
+    private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
         if (!parsed.path) {
             return Promise.resolve(undefined)
         }
@@ -100,14 +120,23 @@ export class BrowseFileSystemProvider
         if (!files) {
             return Promise.resolve(undefined)
         }
-        const tree = new FileTree(parsed, files)
-        const children = tree.directChildren(parsed.path)
-        return children
-        // let blob = await this.fetchCheapBlob(uri)
-        // if (blob.isShallow) {
-        //     blob = this.makeCheap(await this.fetchBlob(uri))
-        // }
-        // return blob.children.map(child => child.uri)
+        return new FileTree(parsed, files)
+    }
+    public async getChildren(uri?: string): Promise<string[] | undefined> {
+        try {
+            if (!uri) {
+                return Promise.resolve([...this.repos])
+            }
+            const parsed = parseUri(uri)
+            if (!parsed.path) {
+                parsed.path = ''
+            }
+            const tree = await this.getFileTree(parsed)
+            return tree?.directChildren(parsed.path)
+        } catch (error) {
+            log.appendLine(`ERROR: getChildren(${uri}) error=${error}`)
+            return Promise.resolve(undefined)
+        }
     }
     public getParent(uri: string): string | undefined {
         return repoUriParent(uri)
@@ -239,14 +268,14 @@ export class BrowseFileSystemProvider
         throw new Error('Method not supported.')
     }
 
-    private async fetchCheapBlob(uri: string): Promise<CheapBlob> {
-        const fromCache = this.cheapCache.get(uri)
-        if (fromCache) {
-            return Promise.resolve(fromCache)
-        }
-        const blob = await this.fetchBlob(uri)
-        return this.makeCheap(blob)
-    }
+    // private async fetchCheapBlob(uri: string): Promise<CheapBlob> {
+    //     const fromCache = this.cheapCache.get(uri)
+    //     if (fromCache) {
+    //         return Promise.resolve(fromCache)
+    //     }
+    //     const blob = await this.fetchBlob(uri)
+    //     return this.makeCheap(blob)
+    // }
     private async fetchBlob(uri: string): Promise<Blob> {
         const result = this.cache.get(uri)
         if (result) {
@@ -768,16 +797,16 @@ interface CheapBlob {
     isShallow: boolean
 }
 
-function cheapBlobCollapsibleState(blob: CheapBlob): vscode.TreeItemCollapsibleState {
-    switch (blob.type) {
-        case vscode.FileType.Directory:
-            return blob.isSingleChild
-                ? vscode.TreeItemCollapsibleState.Expanded
-                : vscode.TreeItemCollapsibleState.Collapsed
-        default:
-            return vscode.TreeItemCollapsibleState.None
-    }
-}
+// function cheapBlobCollapsibleState(blob: CheapBlob): vscode.TreeItemCollapsibleState {
+//     switch (blob.type) {
+//         case vscode.FileType.Directory:
+//             return blob.isSingleChild
+//                 ? vscode.TreeItemCollapsibleState.Expanded
+//                 : vscode.TreeItemCollapsibleState.Collapsed
+//         default:
+//             return vscode.TreeItemCollapsibleState.None
+//     }
+// }
 interface Blob {
     uri: string
     repository: string
