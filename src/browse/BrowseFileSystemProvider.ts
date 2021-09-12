@@ -2,10 +2,16 @@
 import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository } from './parseRepoUrl'
+import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, repoUriRevision } from './parseRepoUrl'
 import { graphqlQuery } from './graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
+
+export interface RepositoryFile {
+    repositoryUri: string
+    repositoryLabel: string
+    fileNames: string[]
+}
 
 export class BrowseFileSystemProvider
     implements
@@ -20,6 +26,8 @@ export class BrowseFileSystemProvider
     private activeUri: vscode.Uri | undefined
     private files: Map<string, Promise<FilesResult | undefined>> = new Map()
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
+    private readonly repoEmitter = new vscode.EventEmitter<string>()
+    public onNewRepo = this.repoEmitter.event
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.uriEmitter.event
     public setTreeView(treeView: vscode.TreeView<string>): void {
         this.treeView = treeView
@@ -36,6 +44,19 @@ export class BrowseFileSystemProvider
         treeView.onDidCollapseElement(event => {
             this.isExpandedNode.delete(event.element)
         })
+    }
+    public async allFileFromOpenRepositories(): Promise<RepositoryFile[]> {
+        const promises: RepositoryFile[] = []
+        for (const [repository, value] of this.files.entries()) {
+            const result = await value
+            const parsed = parseUri(repository)
+            promises.push({
+                repositoryUri: repository,
+                repositoryLabel: `${parsed.repository}${repoUriRevision(parsed)}`,
+                fileNames: result?.data?.repository?.commit?.fileNames || [],
+            })
+        }
+        return promises
     }
     public async didFocus(uri: vscode.Uri | undefined): Promise<void> {
         this.activeUri = uri
@@ -330,7 +351,8 @@ export class BrowseFileSystemProvider
         const downloadingFiles = this.files.get(parsed.repository)
         if (!downloadingFiles) {
             this.files.set(
-                parsed.repository,
+                repoUriRepository(parsed),
+                // parsed.repository,
                 graphqlQuery<FilesParameters, FilesResult>(
                     FilesQuery,
                     {
@@ -367,6 +389,7 @@ export class BrowseFileSystemProvider
         if (isNew) {
             this.repos.add(repo)
             this.uriEmitter.fire(undefined)
+            this.repoEmitter.fire(repo)
         }
     }
 

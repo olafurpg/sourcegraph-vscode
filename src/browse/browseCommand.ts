@@ -1,15 +1,40 @@
 import { URL } from 'url'
 import * as vscode from 'vscode'
+import { log } from '../log'
+import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
 
-export async function browseCommand(): Promise<void> {
-    const clipboard = await vscode.env.clipboard.readText()
-    const uri = await new BrowseQuickPick().getBrowseUri(clipboard)
-    await openFileCommand(vscode.Uri.parse(uri))
+export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
+    const fs = new BrowseFileSystemProvider()
+    vscode.workspace.registerFileSystemProvider('sourcegraph', fs, { isReadonly: true })
+    vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
+    const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs, showCollapseAll: true })
+    fs.setTreeView(treeView)
+    context.subscriptions.push(treeView)
+    context.subscriptions.push(vscode.commands.registerCommand('extension.browse', () => browseCommand(fs)))
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.openFile', (uri: string) => {
+            log.appendLine(`openFile=${uri}`)
+            openFileCommand(vscode.Uri.parse(uri))
+        })
+    )
+    vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
+    fs.didFocus(vscode.window.activeTextEditor?.document.uri)
 }
 
-export async function openFileCommand(uri: vscode.Uri): Promise<void> {
+async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
+    try {
+        const uri = await new BrowseQuickPick().getBrowseUri(fs)
+        await openFileCommand(vscode.Uri.parse(uri))
+    } catch (error) {
+        log.appendLine(`ERROR: ${error}`)
+    }
+}
+
+async function openFileCommand(uri: vscode.Uri): Promise<void> {
     const textDocument = await vscode.workspace.openTextDocument(uri)
     const parsed = parseBrowserRepoURL(new URL(uri.toString(true).replace('sourcegraph://', 'https://')))
     await vscode.window.showTextDocument(textDocument, {

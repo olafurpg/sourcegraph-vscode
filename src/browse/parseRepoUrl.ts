@@ -19,9 +19,11 @@ export interface ParsedRepoURI {
     range: Range | undefined
 }
 
+export function repoUriRevision(parsed: ParsedRepoURI): string {
+    return parsed.revision ? `@${parsed.revision}` : ''
+}
 export function repoUriRepository(parsed: ParsedRepoURI): string {
-    const revision = parsed.revision ? `@${parsed.revision}` : ''
-    return `sourcegraph://${parsed.url.host}/${parsed.repository}${revision}`
+    return `sourcegraph://${parsed.url.host}/${parsed.repository}${repoUriRevision(parsed)}`
 }
 
 export function repoUriParent(uri: string): string | undefined {

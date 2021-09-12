@@ -2,9 +2,7 @@ import open from 'open'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
-import { browseCommand, openFileCommand } from './browse/browseCommand'
-import { BrowseFileSystemProvider } from './browse/BrowseFileSystemProvider'
-import { log } from './log'
+import { activateBrowseCommand } from './browse/browseCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
@@ -95,25 +93,9 @@ export function activate(context: vscode.ExtensionContext): void {
     // Register our extension commands (see package.json).
     context.subscriptions.push(vscode.commands.registerCommand('extension.open', handleCommandErrors(openCommand)))
     context.subscriptions.push(vscode.commands.registerCommand('extension.search', handleCommandErrors(searchCommand)))
+    activateBrowseCommand(context)
 
     // Register browse-related features.
-    const fs = new BrowseFileSystemProvider()
-    vscode.workspace.registerFileSystemProvider('sourcegraph', fs, { isReadonly: true })
-    vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
-    vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
-    vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
-    const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs, showCollapseAll: true })
-    fs.setTreeView(treeView)
-    context.subscriptions.push(treeView)
-    context.subscriptions.push(vscode.commands.registerCommand('extension.browse', handleCommandErrors(browseCommand)))
-    context.subscriptions.push(
-        vscode.commands.registerCommand('extension.openFile', (uri: string) => {
-            log.appendLine(`openFile=${uri}`)
-            openFileCommand(vscode.Uri.parse(uri))
-        })
-    )
-    vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
-    fs.didFocus(vscode.window.activeTextEditor?.document.uri)
 }
 
 export function deactivate(): void {

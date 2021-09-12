@@ -1,17 +1,20 @@
 import { URL } from 'url'
 import * as vscode from 'vscode'
 import { log } from '../log'
+import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { parseBrowserRepoURL } from './parseRepoUrl'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
 }
 export class BrowseQuickPick {
-    public getBrowseUri(clipboard?: string): Promise<string> {
+    public getBrowseUri(fs?: BrowseFileSystemProvider): Promise<string> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
-            const onDidChangeValue = (value: string) => {
+            pick.title = 'Open a Sourcegraph URL or a file from the active repositories'
+            let isAllFilesEnabled = false
+            const onDidChangeValue = async (value: string) => {
                 log.appendLine(`VALUE: ${value}`)
                 if (value.startsWith('https://sourcegraph.com')) {
                     const parsed = parseBrowserRepoURL(new URL(value))
@@ -21,20 +24,45 @@ export class BrowseQuickPick {
                             label: value,
                             detail: `${parsed.repository}/-/${parsed.path}`,
                         }
-                        log.appendLine(`UPDATE: item=${JSON.stringify(item)}`)
-
                         pick.items = [item]
+                        isAllFilesEnabled = false
                     } else {
                         log.appendLine(`NO parsed.path ${value}`)
                         // Report some kind or error message
                     }
+                } else if (fs) {
+                    if (!isAllFilesEnabled) {
+                        log.appendLine(`FETCHING_FILES`)
+                        isAllFilesEnabled = true
+                        pick.busy = true
+                        const allFiles = await fs.allFileFromOpenRepositories()
+                        log.appendLine(`ALL_FILES ${JSON.stringify(allFiles)}`)
+                        pick.busy = false
+                        const newItems: BrowseQuickPickItem[] = []
+                        for (const repo of allFiles) {
+                            for (const file of repo.fileNames) {
+                                const uri = `${repo.repositoryUri}/-/blob/${file}`
+                                const label = `${file} - ${repo.repositoryLabel}`
+                                newItems.push({
+                                    uri,
+                                    label,
+                                    detail: repo.repositoryLabel,
+                                })
+                            }
+                        }
+                        pick.items = newItems
+                    }
                 } else {
-                    log.appendLine(`NO sourcegraph.com`)
+                    pick.items = []
+                    isAllFilesEnabled = false
+                    log.appendLine(`NO sourcegraph.com ${value}`)
                 }
             }
-            if (clipboard?.startsWith('https://sourcegraph')) {
-                pick.value = clipboard
-            }
+            onDidChangeValue(pick.value)
+            fs?.onNewRepo(() => {
+                isAllFilesEnabled = false
+                onDidChangeValue(pick.value)
+            })
             pick.onDidChangeValue(onDidChangeValue)
             pick.onDidChangeSelection(items => {
                 if (items.length > 0) {
