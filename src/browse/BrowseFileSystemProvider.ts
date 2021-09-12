@@ -228,20 +228,33 @@ export class BrowseFileSystemProvider
     }
 
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        // log.appendLine(`STAT: ${uri.toString(true)}`)
-        const blob = await this.fetchBlob(uri.toString(true))
-        return {
-            mtime: blob.time,
-            ctime: blob.time,
-            size: blob.content.length,
-            type: blob.type,
+        log.appendLine(`STAT: ${uri.toString(true)}`)
+        try {
+            const blob = await this.fetchBlob(uri.toString(true))
+            return {
+                mtime: blob.time,
+                ctime: blob.time,
+                size: blob.content.length,
+                type: blob.type,
+            }
+        } catch (error) {
+            const time = new Date().getMilliseconds()
+            return {
+                mtime: time,
+                ctime: time,
+                size: 0,
+                type: vscode.FileType.Directory,
+            }
         }
     }
     public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+        log.appendLine(`READ_FILE ${uri.toString(true)}`)
         const blob = await this.fetchBlob(uri.toString(true))
         return blob.content
     }
     public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+        if (uri.toString(true).endsWith('/-')) return Promise.resolve([])
+        log.appendLine(`READ_DIRECTORY ${uri.toString(true)}`)
         const parsed = parseUri(uri.toString(true))
         if (typeof parsed.path === 'undefined') {
             parsed.path = ''
@@ -251,10 +264,12 @@ export class BrowseFileSystemProvider
             return []
         }
         const children = tree.directChildren(parsed.path)
+        log.appendLine(`result=${children.join('\n')}`)
         return children.map(child => {
             const isDirectory = child.includes('/-/tree/')
             const type = isDirectory ? vscode.FileType.Directory : vscode.FileType.File
-            return [child, type]
+            const name = this.filename(child)
+            return [name, type]
         })
     }
 
@@ -279,14 +294,6 @@ export class BrowseFileSystemProvider
         throw new Error('Method not supported.')
     }
 
-    // private async fetchCheapBlob(uri: string): Promise<CheapBlob> {
-    //     const fromCache = this.cheapCache.get(uri)
-    //     if (fromCache) {
-    //         return Promise.resolve(fromCache)
-    //     }
-    //     const blob = await this.fetchBlob(uri)
-    //     return this.makeCheap(blob)
-    // }
     private async fetchBlob(uri: string): Promise<Blob> {
         const result = this.cache.get(uri)
         if (result) {
