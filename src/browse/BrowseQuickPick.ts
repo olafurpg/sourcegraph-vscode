@@ -23,9 +23,10 @@ export class BrowseQuickPick {
                     const parsed = parseBrowserRepoURL(new URL(value))
                     if (parsed.path) {
                         const item: BrowseQuickPickItem = {
-                            uri: value.replace('https://', 'sourcegraph://').replace(/#.*/, '').replace(/\?.*/, ''),
+                            uri: `sourcegraph://${parsed.url.host}/${parsed.repository}/-/blob/${parsed.path}`,
                             label: value,
                             detail: `${parsed.repository}/-/${parsed.path}`,
+                            repo: parsed.repository,
                         }
                         pick.items = [item]
                         isAllFilesEnabled = false
@@ -90,6 +91,7 @@ export class BrowseQuickPick {
                 if (selection) {
                     if (fs && selection.repo) {
                         selection.uri = await fs.defaultFileUri(selection.repo)
+                        log.appendLine(`SELECTION: ${selection.uri}`)
                     }
                     resolve(selection.uri)
                 }

@@ -425,14 +425,14 @@ export class BrowseFileSystemProvider
 
     public async repositoryMetadata(
         repository: string,
-        token: vscode.CancellationToken
+        token?: vscode.CancellationToken
     ): Promise<RepositoryMetadata | undefined> {
         const response = await graphqlQuery<RevisionParameters, RevisionResult>(
             RevisionQuery,
             {
                 repository: repository,
             },
-            token
+            token || emptyCancelationToken()
         )
         const metadata: RepositoryMetadata = {
             defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
