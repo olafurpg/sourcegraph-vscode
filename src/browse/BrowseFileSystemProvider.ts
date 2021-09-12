@@ -17,6 +17,7 @@ export class BrowseFileSystemProvider
     private isExpandedNode = new Set<string>()
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
+    private files: Map<string, Promise<FilesResult | undefined>> = new Map()
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.uriEmitter.event
     public setTreeView(treeView: vscode.TreeView<string>): void {
@@ -86,6 +87,12 @@ export class BrowseFileSystemProvider
         if (!uri) {
             return Promise.resolve([...this.repos])
         }
+        // const parsed = parseUri(uri)
+        // const files = this.files.get(parsed.repository)
+        // if (!files) {
+        //     return Promise.resolve(undefined)
+        // }
+
         let blob = await this.fetchCheapBlob(uri)
         if (blob.isShallow) {
             blob = this.makeCheap(await this.fetchBlob(uri))
@@ -263,6 +270,20 @@ export class BrowseFileSystemProvider
             },
             token.token
         )
+        const downloadingFiles = this.files.get(parsed.repository)
+        if (!downloadingFiles) {
+            this.files.set(
+                parsed.repository,
+                graphqlQuery<FilesParameters, FilesResult>(
+                    FilesQuery,
+                    {
+                        repository: parsed.repository,
+                        revision: parsed.revision,
+                    },
+                    new vscode.CancellationTokenSource().token
+                )
+            )
+        }
         const content = contentResult?.data?.repository?.commit?.blob?.content
         if (content) {
             const encoder = new TextEncoder()
@@ -374,7 +395,7 @@ export class BrowseFileSystemProvider
 }
 
 function parseUri(uri: string): ParsedRepoURI {
-    return parseBrowserRepoURL(new URL(uri))
+    return parseBrowserRepoURL(new URL(uri.replace('sourcegraph://', 'https://')))
 }
 
 interface RevisionParameters {
@@ -647,6 +668,28 @@ query References($repository: String!, $revision: String!, $path: String!, $line
   }
 }
 `
+const FilesQuery = `
+query FileNames($repository: String!, $revision: String!) {
+  repository(name: $repository) {
+    commit(rev: $revision) {
+      fileNames
+    }
+  }
+}
+`
+interface FilesParameters {
+    repository: string
+    revision: string
+}
+interface FilesResult {
+    data?: {
+        repository?: {
+            commit?: {
+                fileNames?: string[]
+            }
+        }
+    }
+}
 
 const DirectoryQuery = `
 query Directory($repository: String!, $revision: String!, $path: String!) {
