@@ -21,7 +21,7 @@ export interface ParsedRepoURI {
 
 export function repoUriRepository(parsed: ParsedRepoURI): string {
     const revision = parsed.revision ? `@${parsed.revision}` : ''
-    return `${parsed.url.protocol}//${parsed.url.host}/${parsed.repository}${revision}`
+    return `sourcegraph://${parsed.url.host}/${parsed.repository}${revision}`
 }
 
 export function repoUriParent(uri: string): string | undefined {

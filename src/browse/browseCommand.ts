@@ -8,14 +8,17 @@ export async function browseCommand(): Promise<void> {
     const value =
         clipboard.startsWith('https://sourcegraph.com') || clipboard.startsWith('https://github.com') ? clipboard : ''
     const input = await vscode.window.showInputBox({ value })
+    const quickPick = vscode.window.createQuickPick()
+    quickPick.show()
+    quickPick.items
 
     if (input) {
-        const uri = input
-            .replace('https://github.com', 'https://sourcegraph/github.com')
-            .replace('https://', 'sourcegraph://')
-            .replace(/#.*/, '')
-        log.appendLine(`START ${uri}`)
-        await openFileCommand(vscode.Uri.parse(uri))
+        const url = input.replace('https://github.com', 'https://sourcegraph.com/github.com')
+        // TODO(olafurpg) reconstruct URL from parsed components
+        // const parsed = parseBrowserRepoURL(new URL(url))
+        const start = url.replace('https://', 'sourcegraph://').replace(/#.*/, '')
+        log.appendLine(`START: ${start}`)
+        await openFileCommand(vscode.Uri.parse(start))
     }
 }
 
