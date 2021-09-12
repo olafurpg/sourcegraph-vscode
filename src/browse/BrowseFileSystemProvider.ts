@@ -58,7 +58,7 @@ export class BrowseFileSystemProvider
                 })
             }
         } catch (error) {
-            log.appendLine(`ERROR: didFocusString(${uri})`)
+            log.appendLine(`ERROR: didFocusString(${uri}) error=${error}`)
         }
     }
     public async getTreeItem(uri: string): Promise<vscode.TreeItem> {
@@ -68,6 +68,7 @@ export class BrowseFileSystemProvider
             const label = parsed.path ? this.filename(parsed.path) : parsed.repository
             const isFile = uri.includes('/-/blob/')
             const isDirectory = !isFile
+            const collapsibleState = await this.getCollapsibleState(uri, isDirectory)
             const command = isFile
                 ? {
                       command: 'extension.openFile',
@@ -79,7 +80,7 @@ export class BrowseFileSystemProvider
                 id: uri,
                 label,
                 tooltip: uri.replace('sourcegraph://', 'https://'),
-                collapsibleState: await this.getCollapsibleState(uri, isDirectory),
+                collapsibleState,
                 command,
                 resourceUri: vscode.Uri.parse(uri),
             }
@@ -89,9 +90,6 @@ export class BrowseFileSystemProvider
         }
     }
     private async getCollapsibleState(uri: string, isDirectory: boolean): Promise<vscode.TreeItemCollapsibleState> {
-        let collapsibleState = isDirectory
-            ? vscode.TreeItemCollapsibleState.Collapsed
-            : vscode.TreeItemCollapsibleState.None
         const parent = repoUriParent(uri)
         if (isDirectory && parent) {
             const parsedParent = parseUri(parent)
@@ -99,11 +97,11 @@ export class BrowseFileSystemProvider
                 const tree = await this.getFileTree(parsedParent)
                 const directChildren = tree?.directChildren(parsedParent.path)
                 if (directChildren && directChildren.length === 1) {
-                    collapsibleState = vscode.TreeItemCollapsibleState.Expanded
+                    return vscode.TreeItemCollapsibleState.Expanded
                 }
             }
         }
-        return collapsibleState
+        return isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     }
     private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
         if (typeof parsed.path === 'undefined') {
@@ -120,20 +118,24 @@ export class BrowseFileSystemProvider
             log.appendLine(`getFileTree - empty files`)
             return Promise.resolve(undefined)
         }
+        // log.appendLine(`new FileTree(${JSON.stringify(files)})`)
         return new FileTree(parsed, files)
     }
     public async getChildren(uri?: string): Promise<string[] | undefined> {
         try {
             if (!uri) {
-                return Promise.resolve([...this.repos])
+                const repos = [...this.repos]
+                // log.appendLine(`getChildren(undefined) repos=${JSON.stringify(repos)}`)
+                return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
             }
             const parsed = parseUri(uri)
             if (typeof parsed.path === 'undefined') {
                 parsed.path = ''
             }
             const tree = await this.getFileTree(parsed)
-            log.appendLine(`getChildren(${uri}) path=${parsed.path} tree=${tree}`)
-            return tree?.directChildren(parsed.path)
+            const result = tree?.directChildren(parsed.path)
+            // log.appendLine(`getChildren(${uri}) path=${parsed.path} tree=${tree} result=${JSON.stringify(result)}`)
+            return result
         } catch (error) {
             log.appendLine(`ERROR: getChildren(${uri}) error=${error}`)
             return Promise.resolve(undefined)
@@ -146,7 +148,6 @@ export class BrowseFileSystemProvider
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
     private readonly cache = new Map<string, Blob>()
     private readonly repos = new Set<string>()
-    private readonly cheapCache = new Map<string, CheapBlob>()
 
     public async provideReferences(
         document: vscode.TextDocument,
@@ -241,11 +242,20 @@ export class BrowseFileSystemProvider
         return blob.content
     }
     public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        const blob = await this.fetchBlob(uri.toString(true))
-        if (blob.type !== vscode.FileType.Directory) {
-            throw new Error(`not a directory: ${uri.toString()}`)
+        const parsed = parseUri(uri.toString(true))
+        if (typeof parsed.path === 'undefined') {
+            parsed.path = ''
         }
-        return blob.children.map(child => [child.name, child.type])
+        const tree = await this.getFileTree(parsed)
+        if (!tree) {
+            return []
+        }
+        const children = tree.directChildren(parsed.path)
+        return children.map(child => {
+            const isDirectory = child.includes('/-/tree/')
+            const type = isDirectory ? vscode.FileType.Directory : vscode.FileType.File
+            return [child, type]
+        })
     }
 
     // Unsupported methods for readonly file systems.
@@ -335,74 +345,12 @@ export class BrowseFileSystemProvider
                 path: parsed.path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
-                children: [],
             }
             this.updateCache(toCacheResult)
-            return toCacheResult
-        }
-        const directoryResult = await graphqlQuery<DirectoryParameters, DirectoryResult>(
-            DirectoryQuery,
-            {
-                repository: parsed.repository,
-                revision: parsed.revision,
-                path: parsed.path,
-            },
-            new vscode.CancellationTokenSource().token
-        )
-        const children: CheapBlob[] | undefined = directoryResult?.data?.repository?.commit?.tree?.entries.map(
-            entry => {
-                const childUri = `sourcegraph://${vscode.Uri.parse(uri).authority}${entry.url}`
-                return {
-                    uri: childUri,
-                    name: entry.name,
-                    type: entry.isDirectory ? vscode.FileType.Directory : vscode.FileType.File,
-                    children: [],
-                    isShallow: true,
-                    isSingleChild: entry.isSingleChild,
-                }
-            }
-        )
-        if (Array.isArray(children)) {
-            for (const child of children) {
-                this.updateCheapCache(child)
-            }
-            const toCacheResult: Blob = {
-                uri,
-                repository: parsed.repository,
-                revision: parsed.revision,
-                content: new Uint8Array(0),
-                path: parsed.path,
-                time: new Date().getMilliseconds(),
-                type: vscode.FileType.Directory,
-                children: [],
-            }
-            this.updateCache(toCacheResult)
-            this.updateCheapCache(this.makeCheap(toCacheResult))
-
-            for (const child of children) {
-                const parent = repoUriParent(child.uri)
-                if (parent) {
-                    const parentBlob = this.cheapCache.get(parent)
-                    if (parentBlob) {
-                        parentBlob.children.push(child)
-                        if (child.isSingleChild) {
-                            parentBlob.isShallow = false
-                        }
-                    } else {
-                        const keys = [...this.cheapCache.keys()]
-                        log.appendLine(`repoUriParent child=${child.uri} parent=${parent}`)
-                        log.appendLine(`KEYS: ${keys.join('\n')}`)
-                    }
-                }
-            }
             return toCacheResult
         }
         log.appendLine(`no blob result for ${uri.toString()}`)
         throw new Error(`Not found '${uri.toString()}'`)
-    }
-
-    private updateCheapCache(blob: CheapBlob) {
-        this.cheapCache.set(blob.uri, blob)
     }
 
     private updateCache(blob: Blob) {
@@ -418,19 +366,6 @@ export class BrowseFileSystemProvider
     private filename(path: string): string {
         const parts = path.split('/')
         return parts[parts.length - 1]
-    }
-    private makeCheap(blob: Blob): CheapBlob {
-        const parsed = parseBrowserRepoURL(new URL(blob.uri))
-        const revision = parsed.revision ? `@${parsed.revision}` : ''
-        const name = typeof parsed.path === 'undefined' ? this.filename(blob.path) : parsed.repository + revision
-        return {
-            uri: blob.uri,
-            type: blob.type,
-            name,
-            children: blob.children,
-            isShallow: false,
-            isSingleChild: blob.isSingleChild || false,
-        }
     }
 }
 
@@ -731,83 +666,64 @@ interface FilesResult {
     }
 }
 
-const DirectoryQuery = `
-query Directory($repository: String!, $revision: String!, $path: String!) {
-  repository(name: $repository) {
-    commit(rev: "", inputRevspec: $revision) {
-      tree(path: $path) {
-        ...TreeFields
-      }
-    }
-  }
-}
+// const DirectoryQuery = `
+// query Directory($repository: String!, $revision: String!, $path: String!) {
+//   repository(name: $repository) {
+//     commit(rev: "", inputRevspec: $revision) {
+//       tree(path: $path) {
+//         ...TreeFields
+//       }
+//     }
+//   }
+// }
 
-fragment TreeFields on GitTree {
-  isRoot
-  url
-  entries(first: 2500, recursiveSingleChild: true) {
-    ...TreeEntryFields
-  }
-}
+// fragment TreeFields on GitTree {
+//   isRoot
+//   url
+//   entries(first: 2500, recursiveSingleChild: true) {
+//     ...TreeEntryFields
+//   }
+// }
 
-fragment TreeEntryFields on TreeEntry {
-  name
-  path
-  isDirectory
-  url
-  submodule {
-    url
-    commit
-  }
-  isSingleChild
-}
-`
-interface DirectoryParameters {
-    repository: string
-    revision: string
-    path: string
-}
-interface DirectoryResult {
-    data?: {
-        repository?: {
-            commit?: {
-                tree?: {
-                    isRoot: boolean
-                    url: string
-                    entries: DirectoryEntry[]
-                }
-            }
-        }
-    }
-}
-interface DirectoryEntry {
-    name: string
-    path: string
-    isDirectory: boolean
-    url: string
-    submodule: string
-    isSingleChild: boolean
-}
-
-interface CheapBlob {
-    uri: string
-    name: string
-    type: vscode.FileType
-    children: CheapBlob[]
-    isSingleChild: boolean
-    isShallow: boolean
-}
-
-// function cheapBlobCollapsibleState(blob: CheapBlob): vscode.TreeItemCollapsibleState {
-//     switch (blob.type) {
-//         case vscode.FileType.Directory:
-//             return blob.isSingleChild
-//                 ? vscode.TreeItemCollapsibleState.Expanded
-//                 : vscode.TreeItemCollapsibleState.Collapsed
-//         default:
-//             return vscode.TreeItemCollapsibleState.None
+// fragment TreeEntryFields on TreeEntry {
+//   name
+//   path
+//   isDirectory
+//   url
+//   submodule {
+//     url
+//     commit
+//   }
+//   isSingleChild
+// }
+// `
+// interface DirectoryParameters {
+//     repository: string
+//     revision: string
+//     path: string
+// }
+// interface DirectoryResult {
+//     data?: {
+//         repository?: {
+//             commit?: {
+//                 tree?: {
+//                     isRoot: boolean
+//                     url: string
+//                     entries: DirectoryEntry[]
+//                 }
+//             }
+//         }
 //     }
 // }
+// interface DirectoryEntry {
+//     name: string
+//     path: string
+//     isDirectory: boolean
+//     url: string
+//     submodule: string
+//     isSingleChild: boolean
+// }
+
 interface Blob {
     uri: string
     repository: string
@@ -816,6 +732,4 @@ interface Blob {
     content: Uint8Array
     time: number
     type: vscode.FileType
-    children: CheapBlob[]
-    isSingleChild?: boolean
 }

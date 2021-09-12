@@ -8,6 +8,9 @@ export class FileTree {
         return `FileTree(${this.uri.url.toString()}, files.length=${this.files.length})`
     }
 
+    // TODO: optimize this for very large repos like chromium/chromium. It's
+    // usable in its current state but could be much faster if we use binary
+    // search to skip unrelated paths.
     public directChildren(directory: string): string[] {
         const depth = this.depth(directory)
         const directFiles = new Set<string>()
@@ -18,6 +21,9 @@ export class FileTree {
         }
         // console.log(`DIRECTORY=${directory}`)
         for (const file of this.files) {
+            if (file === '') {
+                continue
+            }
             // console.log(`file=${file} startsWith=${file.startsWith(directory)}`)
             if (file.startsWith(directory)) {
                 const revision = this.uri.revision ? `@${this.uri.revision}` : ''
