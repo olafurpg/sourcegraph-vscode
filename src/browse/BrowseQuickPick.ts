@@ -2,6 +2,7 @@ import { URL } from 'url'
 import * as vscode from 'vscode'
 import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
+import { repositories } from './graphqlQuery'
 import { parseBrowserRepoURL } from './parseRepoUrl'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
@@ -12,7 +13,7 @@ export class BrowseQuickPick {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
-            pick.title = 'Open a Sourcegraph URL or a file from the active repositories'
+            pick.title = 'Open a Sourcegraph URL or use repo:QUERY to open a repository'
             let isAllFilesEnabled = false
             const onDidChangeValue = async (value: string) => {
                 log.appendLine(`VALUE: ${value}`)
@@ -30,6 +31,16 @@ export class BrowseQuickPick {
                         log.appendLine(`NO parsed.path ${value}`)
                         // Report some kind or error message
                     }
+                } else if (value.startsWith('repo:')) {
+                    isAllFilesEnabled = false
+                    pick.busy = true
+                    const query = value.slice('repo:'.length)
+                    const repos = await repositories(query)
+                    pick.items = repos.map(repo => ({
+                        label: `repo:${repo}`,
+                        uri: `sourcegraph://sourcegraph.com/${repo}/-/blob/README.md`,
+                    }))
+                    pick.busy = false
                 } else if (fs) {
                     if (!isAllFilesEnabled) {
                         log.appendLine(`FETCHING_FILES`)

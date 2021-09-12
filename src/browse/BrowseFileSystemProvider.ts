@@ -129,9 +129,12 @@ export class BrowseFileSystemProvider
             log.appendLine(`getFileTree - empty parsed.path`)
             return Promise.resolve(undefined)
         }
-        const downloading = this.files.get(repoUriRepository(parsed))
+        const downloadingKey = repoUriRepository(parsed)
+        const downloading = this.files.get(downloadingKey)
         if (!downloading) {
-            log.appendLine(`getFileTree - empty downloading`)
+            log.appendLine(
+                `getFileTree - empty downloading key=${downloadingKey} keys=${JSON.stringify([...this.files.keys()])}`
+            )
             return Promise.resolve(undefined)
         }
         const files = (await downloading)?.data?.repository?.commit?.fileNames
@@ -348,10 +351,11 @@ export class BrowseFileSystemProvider
             },
             token.token
         )
-        const downloadingFiles = this.files.get(parsed.repository)
+        const downloadingKey = repoUriRepository(parsed)
+        const downloadingFiles = this.files.get(downloadingKey)
         if (!downloadingFiles) {
             this.files.set(
-                repoUriRepository(parsed),
+                downloadingKey,
                 // parsed.repository,
                 graphqlQuery<FilesParameters, FilesResult>(
                     FilesQuery,
@@ -435,6 +439,7 @@ interface ContentResult {
         }
     }
 }
+
 const RevisionQuery = `
 query Revision($repository: String!) {
   repositoryRedirect(name: $repository) {

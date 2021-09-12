@@ -1,3 +1,4 @@
+import * as vscode from 'vscode'
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
 import { log } from '../log'
@@ -38,4 +39,46 @@ export function graphqlQuery<A, B>(query: string, variables: A, token: Cancellat
         })
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     })
+}
+
+const RepositoryQuery = `
+query RepositoriesForPopover($query: String, $first: Int) {
+  repositories(first: $first, query: $query) {
+    nodes {
+      name
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+    }
+  }
+}
+`
+export async function repositories(query: string): Promise<string[]> {
+    const result = await graphqlQuery<RepositoryParameters, RepositoryResult>(
+        RepositoryQuery,
+        {
+            query,
+            first: 10000,
+        },
+        new vscode.CancellationTokenSource().token
+    )
+    return result?.data?.repositories?.nodes?.map(node => node.name) || []
+}
+
+interface RepositoryParameters {
+    query: string
+    first: number
+}
+
+interface RepositoryResult {
+    data?: {
+        repositories?: {
+            nodes?: RepositoryNode[]
+        }
+    }
+    first: number
+}
+interface RepositoryNode {
+    name: string
 }
