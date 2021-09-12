@@ -44,45 +44,30 @@ export class BrowseFileSystemProvider
         }
     }
     private async didFocusString(uri: string, isDestinationNode: boolean): Promise<void> {
-        if (this.treeView) {
-            const parent = repoUriParent(uri)
-            if (parent && !this.isExpandedNode.has(parent)) {
-                if (
-                    parent ===
-                    'sourcegraph://sourcegraph.com/github.com/sourcegraph/sourcegraph@nsc/dependency_repo_streamline/-/tree/enterprise/cmd/worker/internal/codeintel/indexing/depend'
-                ) {
-                    log.appendLine(`BOOM ${uri}`)
+        try {
+            if (this.treeView) {
+                const parent = repoUriParent(uri)
+                if (parent && !this.isExpandedNode.has(parent)) {
+                    await this.didFocusString(parent, false)
                 }
-                await this.didFocusString(parent, false)
+                log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
+                await this.treeView.reveal(uri, {
+                    focus: true,
+                    select: isDestinationNode,
+                    expand: !isDestinationNode,
+                })
             }
-            log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
-            await this.treeView.reveal(uri, {
-                focus: true,
-                select: isDestinationNode,
-                expand: !isDestinationNode,
-            })
+        } catch (error) {
+            log.appendLine(`ERROR: didFocusString(${uri})`)
         }
     }
     public async getTreeItem(uri: string): Promise<vscode.TreeItem> {
         try {
+            // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
             const parsed = parseUri(uri)
             const label = parsed.path ? this.filename(parsed.path) : parsed.repository
             const isFile = uri.includes('/-/blob/')
             const isDirectory = !isFile
-            let collapsibleState = isDirectory
-                ? vscode.TreeItemCollapsibleState.Collapsed
-                : vscode.TreeItemCollapsibleState.None
-            const parent = repoUriParent(uri)
-            if (isDirectory && parent) {
-                const parsedParent = parseUri(parent)
-                if (parsedParent.path) {
-                    const tree = await this.getFileTree(parsedParent)
-                    const directChildren = tree?.directChildren(parsedParent.path)
-                    if (directChildren && directChildren.length === 1) {
-                        collapsibleState = vscode.TreeItemCollapsibleState.Expanded
-                    }
-                }
-            }
             const command = isFile
                 ? {
                       command: 'extension.openFile',
@@ -90,12 +75,11 @@ export class BrowseFileSystemProvider
                       arguments: [uri],
                   }
                 : undefined
-            // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
             return {
                 id: uri,
                 label,
                 tooltip: uri.replace('sourcegraph://', 'https://'),
-                collapsibleState,
+                collapsibleState: await this.getCollapsibleState(uri, isDirectory),
                 command,
                 resourceUri: vscode.Uri.parse(uri),
             }
@@ -103,6 +87,23 @@ export class BrowseFileSystemProvider
             log.appendLine(`ERROR: getTreeItem(${uri}) error=${error}`)
             return Promise.resolve({})
         }
+    }
+    private async getCollapsibleState(uri: string, isDirectory: boolean): Promise<vscode.TreeItemCollapsibleState> {
+        let collapsibleState = isDirectory
+            ? vscode.TreeItemCollapsibleState.Collapsed
+            : vscode.TreeItemCollapsibleState.None
+        const parent = repoUriParent(uri)
+        if (isDirectory && parent) {
+            const parsedParent = parseUri(parent)
+            if (parsedParent.path) {
+                const tree = await this.getFileTree(parsedParent)
+                const directChildren = tree?.directChildren(parsedParent.path)
+                if (directChildren && directChildren.length === 1) {
+                    collapsibleState = vscode.TreeItemCollapsibleState.Expanded
+                }
+            }
+        }
+        return collapsibleState
     }
     private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
         if (typeof parsed.path === 'undefined') {
