@@ -1,25 +1,12 @@
 import { URL } from 'url'
 import * as vscode from 'vscode'
-import { log } from '../log'
+import { BrowseQuickPick } from './BrowseQuickPick'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
 
 export async function browseCommand(): Promise<void> {
     const clipboard = await vscode.env.clipboard.readText()
-    const value =
-        clipboard.startsWith('https://sourcegraph.com') || clipboard.startsWith('https://github.com') ? clipboard : ''
-    const input = await vscode.window.showInputBox({ value })
-    const quickPick = vscode.window.createQuickPick()
-    quickPick.show()
-    quickPick.items
-
-    if (input) {
-        const url = input.replace('https://github.com', 'https://sourcegraph.com/github.com')
-        // TODO(olafurpg) reconstruct URL from parsed components
-        // const parsed = parseBrowserRepoURL(new URL(url))
-        const start = url.replace('https://', 'sourcegraph://').replace(/#.*/, '')
-        log.appendLine(`START: ${start}`)
-        await openFileCommand(vscode.Uri.parse(start))
-    }
+    const uri = await new BrowseQuickPick().getBrowseUri(clipboard)
+    await openFileCommand(vscode.Uri.parse(uri))
 }
 
 export async function openFileCommand(uri: vscode.Uri): Promise<void> {
