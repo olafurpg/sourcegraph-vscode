@@ -31,7 +31,7 @@ async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
         log.appendLine(`QUICK_PICK_RESULT ${uri}`)
         await openFileCommand(vscode.Uri.parse(uri))
     } catch (error) {
-        log.appendLine(`ERROR: ${error}`)
+        log.appendLine(`ERROR - browseCommand: ${error}`)
     }
 }
 

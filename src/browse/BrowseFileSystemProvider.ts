@@ -235,9 +235,18 @@ export class BrowseFileSystemProvider
     }
 
     private nodeToLocation(node: LocationNode): vscode.Location {
+        const metadata = this.metadata.get(node.resource.repository.name)
+        let revision = node.resource.commit.oid
+        if (metadata?.defaultBranch && revision === metadata?.defaultOid) {
+            revision = metadata.defaultBranch
+        } else {
+            log.appendLine(
+                `NODE_TO_LOCATION oid=${node.resource.commit.oid} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
+            )
+        }
         return new vscode.Location(
             vscode.Uri.parse(
-                `sourcegraph://sourcegraph.com/${node.resource.repository.name}@${node.resource.commit.oid}/-/blob/${node.resource.path}`
+                `sourcegraph://sourcegraph.com/${node.resource.repository.name}@${revision}/-/blob/${node.resource.path}`
             ),
             new vscode.Range(
                 new vscode.Position(node.range.start.line, node.range.start.character),
@@ -368,6 +377,7 @@ export class BrowseFileSystemProvider
         }
         const url = new URL(uri.replace('sourcegraph://', 'https://'))
         const parsed = parseBrowserRepoURL(url)
+        await this.repositoryMetadata(parsed.repository)
         const token = new vscode.CancellationTokenSource()
         if (!parsed.revision) {
             parsed.revision = (await this.repositoryMetadata(parsed.repository, token.token))?.defaultBranch
@@ -427,6 +437,8 @@ export class BrowseFileSystemProvider
         repository: string,
         token?: vscode.CancellationToken
     ): Promise<RepositoryMetadata | undefined> {
+        let metadata = this.metadata.get(repository)
+        if (metadata) return metadata
         const response = await graphqlQuery<RevisionParameters, RevisionResult>(
             RevisionQuery,
             {
@@ -434,7 +446,7 @@ export class BrowseFileSystemProvider
             },
             token || emptyCancelationToken()
         )
-        const metadata: RepositoryMetadata = {
+        metadata = {
             defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
             defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
             defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,

@@ -55,14 +55,14 @@ query RepositoriesForPopover($query: String, $first: Int) {
   }
 }
 `
-export async function repositories(query: string): Promise<string[]> {
+export async function repositories(query: string, token: vscode.CancellationToken): Promise<string[]> {
     const result = await graphqlQuery<RepositoryParameters, RepositoryResult>(
         RepositoryQuery,
         {
             query,
             first: 10000,
         },
-        new vscode.CancellationTokenSource().token
+        token
     )
     return result?.data?.repositories?.nodes?.filter(node => !node.isFork).map(node => node.name) || []
 }

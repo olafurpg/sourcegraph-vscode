@@ -41,6 +41,10 @@ export function repoUriParent(uri: string): string | undefined {
     return undefined
 }
 
+export function parseBrowserRepoUri(uri: string): ParsedRepoURI {
+    return parseBrowserRepoURL(new URL(uri.replace('sourcegraph://', 'https://')))
+}
+
 export function parseBrowserRepoURL(url: URL): ParsedRepoURI {
     let pathname = url.pathname.slice(1) // trim leading '/'
     if (pathname.endsWith('/')) {

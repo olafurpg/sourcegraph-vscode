@@ -3,21 +3,27 @@ import * as vscode from 'vscode'
 import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { repositories } from './graphqlQuery'
-import { parseBrowserRepoURL } from './parseRepoUrl'
+import { parseBrowserRepoUri, parseBrowserRepoURL, repoUriRepository } from './parseRepoUrl'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
     repo?: string
 }
 export class BrowseQuickPick {
-    public getBrowseUri(fs?: BrowseFileSystemProvider): Promise<string> {
+    public getBrowseUri(fs: BrowseFileSystemProvider): Promise<string> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
             pick.title = 'Open a file, paste a Sourcegraph URL or type repo:QUERY to open a repository'
             pick.matchOnDescription
             let isAllFilesEnabled = false
+            let token: vscode.CancellationTokenSource | undefined
             const onDidChangeValue = async (value: string) => {
+                if (token) {
+                    token.cancel()
+                    token.dispose()
+                    token = undefined
+                }
                 log.appendLine(`VALUE: ${value}`)
                 if (value.startsWith('https://sourcegraph.com')) {
                     const parsed = parseBrowserRepoURL(new URL(value))
@@ -35,49 +41,46 @@ export class BrowseQuickPick {
                         // Report some kind or error message
                     }
                 } else if (value.startsWith('repo:')) {
-                    isAllFilesEnabled = false
+                    token = new vscode.CancellationTokenSource()
                     pick.busy = true
                     const query = value.slice('repo:'.length)
-                    const repos = await repositories(query)
-                    pick.items = repos.map(repo => ({
-                        label: `repo:${repo}`,
-                        uri: ``,
-                        repo,
-                    }))
-                    pick.busy = false
-                } else if (fs) {
-                    if (!isAllFilesEnabled) {
-                        log.appendLine(`FETCHING_FILES`)
-                        isAllFilesEnabled = true
-                        pick.busy = true
-                        const allFiles = await fs.allFileFromOpenRepositories()
-                        // log.appendLine(`ALL_FILES ${JSON.stringify(allFiles)}`)
+                    const repos = await repositories(query, token.token)
+                    if (!token.token.isCancellationRequested) {
+                        pick.items = repos.map(repo => ({
+                            label: `repo:${repo}`,
+                            uri: ``,
+                            repo,
+                        }))
+                        isAllFilesEnabled = false
                         pick.busy = false
-                        const newItems: BrowseQuickPickItem[] = []
-                        for (const repo of allFiles) {
-                            for (const file of repo.fileNames) {
-                                if (file === '') {
-                                    continue
-                                }
-                                const uri = `${repo.repositoryUri}/-/blob/${file}`
-                                const label = `${file} - ${repo.repositoryLabel}`
-                                newItems.push({
-                                    uri,
-                                    label,
-                                    detail: repo.repositoryLabel,
-                                })
-                            }
-                        }
-                        pick.items = newItems
                     }
-                } else {
-                    pick.items = []
-                    isAllFilesEnabled = false
-                    log.appendLine(`NO sourcegraph.com ${value}`)
+                } else if (!isAllFilesEnabled) {
+                    log.appendLine(`FETCHING_FILES`)
+                    isAllFilesEnabled = true
+                    pick.busy = true
+                    const allFiles = await fs.allFileFromOpenRepositories()
+                    // log.appendLine(`ALL_FILES ${JSON.stringify(allFiles)}`)
+                    pick.busy = false
+                    const newItems: BrowseQuickPickItem[] = []
+                    for (const repo of allFiles) {
+                        for (const file of repo.fileNames) {
+                            if (file === '') {
+                                continue
+                            }
+                            const uri = `${repo.repositoryUri}/-/blob/${file}`
+                            const label = `${file} - ${repo.repositoryLabel}`
+                            newItems.push({
+                                uri,
+                                label,
+                                detail: repo.repositoryLabel,
+                            })
+                        }
+                    }
+                    pick.items = newItems
                 }
             }
             onDidChangeValue(pick.value)
-            fs?.onNewRepo(() => {
+            fs.onNewRepo(() => {
                 isAllFilesEnabled = false
                 onDidChangeValue(pick.value)
             })
@@ -88,14 +91,26 @@ export class BrowseQuickPick {
                 }
             })
             pick.onDidAccept(async () => {
-                if (selection) {
-                    if (fs && selection.repo) {
-                        selection.uri = await fs.defaultFileUri(selection.repo)
-                        log.appendLine(`SELECTION: ${selection.uri}`)
+                pick.busy = true
+                try {
+                    if (selection) {
+                        if (selection.repo) {
+                            if (!selection.uri || !parseBrowserRepoUri(selection.uri).path) {
+                                selection.uri = await fs.defaultFileUri(selection.repo)
+                            }
+                            const parsed = parseBrowserRepoUri(selection.uri)
+                            if (!parsed.revision) {
+                                const metadata = await fs.repositoryMetadata(parsed.repository)
+                                parsed.revision = metadata?.defaultBranch || 'HEAD'
+                                selection.uri = `${repoUriRepository(parsed)}/-/blob/${parsed.path}`
+                            }
+                        }
+                        resolve(selection.uri)
                     }
-                    resolve(selection.uri)
+                    pick.dispose()
+                } catch (error) {
+                    log.appendLine(`ERROR selection ${error} ${JSON.stringify(selection)}`)
                 }
-                pick.dispose()
             })
             pick.onDidHide(() => {
                 pick.dispose()
