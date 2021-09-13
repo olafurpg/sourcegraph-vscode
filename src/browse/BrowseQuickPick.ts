@@ -135,8 +135,8 @@ export class BrowseQuickPick {
                         }
                         this.addRecentlyBrowsedFile(selection.uri)
                         resolve(selection.uri)
+                        pick.dispose()
                     }
-                    pick.dispose()
                 } catch (error) {
                     log.appendLine(`ERROR selection ${error} ${JSON.stringify(selection)}`)
                 }

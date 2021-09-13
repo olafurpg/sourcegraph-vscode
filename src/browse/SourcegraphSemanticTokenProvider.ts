@@ -37,7 +37,7 @@ export class SourcegraphSemanticTokenProvider
     ): vscode.SemanticTokens {
         const builder = new vscode.SemanticTokensBuilder(this)
         const lines = document.getText().split(/\n/)
-        const patternType = SearchPatternType.literal
+        const patternType = SearchPatternType.regexp
         const interpretComments = true
         for (const [line, text] of lines.entries()) {
             const result = scanSearchQuery(text, interpretComments, patternType)
@@ -90,7 +90,7 @@ export class SourcegraphSemanticTokenProvider
             case 'metaRevision':
                 return 'interface'
             case 'pattern':
-                return patternType === SearchPatternType.regexp ? 'regexp' : ''
+                return ''
             default:
                 return ''
         }

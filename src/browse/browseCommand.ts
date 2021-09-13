@@ -4,6 +4,7 @@ import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
+import { SourcegraphCompletionItemProvider } from './SourcegraphCompletionItemProvider'
 import { SourcegraphSemanticTokenProvider } from './SourcegraphSemanticTokenProvider'
 
 export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
@@ -28,6 +29,10 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
     )
     vscode.languages.registerReferenceProvider({ language: 'sourcegraph' }, fs)
     vscode.languages.registerDocumentSemanticTokensProvider({ language: 'sourcegraph' }, semanticTokens, semanticTokens)
+    vscode.languages.registerCompletionItemProvider(
+        { language: 'sourcegraph' },
+        new SourcegraphCompletionItemProvider()
+    )
     vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
     fs.didFocus(vscode.window.activeTextEditor?.document.uri)
 }
