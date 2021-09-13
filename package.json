@@ -79,7 +79,7 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "Sourcegraph extension configuration",
+      "title": "Sourcegraph",
       "properties": {
         "sourcegraph.url": {
           "type": [
@@ -101,6 +101,13 @@
           ],
           "default": "",
           "description": "Always open files at this default branch."
+        },
+        "sourcegraph.recentlyBrowsedFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Files that have been opened through the 'Browse' command"
         }
       }
     }

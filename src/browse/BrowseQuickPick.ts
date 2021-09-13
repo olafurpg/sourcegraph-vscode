@@ -9,31 +9,57 @@ interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
     repo?: string
 }
+
+function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
+    const parsed = parseBrowserRepoURL(new URL(value))
+    if (parsed.path) {
+        return {
+            uri: `sourcegraph://${parsed.url.host}/${parsed.repository}/-/blob/${parsed.path}`,
+            label: parsed.path,
+            description: parsed.repository,
+            detail: value,
+            repo: parsed.repository,
+        }
+    }
+    return undefined
+}
+
+const RECENTLY_BROWSED_FILES_KEY = 'recentlyBrowsedFiles'
+
 export class BrowseQuickPick {
-    public getBrowseUri(fs: BrowseFileSystemProvider): Promise<string> {
+    private config = vscode.workspace.getConfiguration('sourcegraph')
+    private recentFiles: string[] = this.config.get<string[]>(RECENTLY_BROWSED_FILES_KEY, [])
+    private recentItems: BrowseQuickPickItem[] = []
+    constructor() {
+        for (const file of this.recentFiles) {
+            const item = browseQuickPickItem(file)
+            if (item) {
+                this.recentItems.push(item)
+            }
+        }
+    }
+
+    public async getBrowseUri(fs: BrowseFileSystemProvider): Promise<string> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
             pick.title = 'Open a file, paste a Sourcegraph URL or type repo:QUERY to open a repository'
+            pick.ignoreFocusOut = true
+            pick.matchOnDescription = true
             pick.matchOnDetail = true
             let isAllFilesEnabled = false
-            let token: vscode.CancellationTokenSource | undefined
+            pick.items = this.recentItems
+            let pendingRequests: vscode.CancellationTokenSource | undefined
             const onDidChangeValue = async (value: string) => {
-                if (token) {
-                    token.cancel()
-                    token.dispose()
-                    token = undefined
+                if (pendingRequests) {
+                    pendingRequests.cancel()
+                    pendingRequests.dispose()
+                    pendingRequests = undefined
                 }
                 log.appendLine(`VALUE: ${value}`)
                 if (value.startsWith('https://sourcegraph.com')) {
-                    const parsed = parseBrowserRepoURL(new URL(value))
-                    if (parsed.path) {
-                        const item: BrowseQuickPickItem = {
-                            uri: `sourcegraph://${parsed.url.host}/${parsed.repository}/-/blob/${parsed.path}`,
-                            label: value,
-                            detail: `${parsed.repository}/-/${parsed.path}`,
-                            repo: parsed.repository,
-                        }
+                    const item = browseQuickPickItem(value)
+                    if (item) {
                         pick.items = [item]
                         isAllFilesEnabled = false
                     } else {
@@ -41,11 +67,11 @@ export class BrowseQuickPick {
                         // Report some kind or error message
                     }
                 } else if (value.startsWith('repo:')) {
-                    token = new vscode.CancellationTokenSource()
+                    pendingRequests = new vscode.CancellationTokenSource()
                     pick.busy = true
                     const query = value.slice('repo:'.length)
-                    const repos = await repositories(query, token.token)
-                    if (!token.token.isCancellationRequested) {
+                    const repos = await repositories(query, pendingRequests.token)
+                    if (!pendingRequests.token.isCancellationRequested) {
                         pick.items = repos.map(repo => ({
                             label: `repo:${repo}`,
                             uri: ``,
@@ -60,7 +86,7 @@ export class BrowseQuickPick {
                     pick.busy = true
                     const allFiles = await fs.allFileFromOpenRepositories()
                     pick.busy = false
-                    const newItems: BrowseQuickPickItem[] = []
+                    const newItems: BrowseQuickPickItem[] = [...this.recentItems]
                     for (const repo of allFiles) {
                         for (const file of repo.fileNames) {
                             if (file === '') {
@@ -102,6 +128,7 @@ export class BrowseQuickPick {
                                 selection.uri = `${repoUriRepository(parsed)}/-/blob/${parsed.path}`
                             }
                         }
+                        this.addRecentlyBrowsedFile(selection.uri)
                         resolve(selection.uri)
                     }
                     pick.dispose()
@@ -115,5 +142,12 @@ export class BrowseQuickPick {
             })
             pick.show()
         })
+    }
+
+    private addRecentlyBrowsedFile(value: string) {
+        if (!this.recentFiles.includes(value)) {
+            this.recentFiles = [value, ...this.recentFiles.slice(0, 9)]
+            this.config.update(RECENTLY_BROWSED_FILES_KEY, this.recentFiles, vscode.ConfigurationTarget.Global)
+        }
     }
 }
