@@ -84,3 +84,90 @@ interface RepositoryNode {
     name: string
     isFork: boolean
 }
+
+type SearchKind = 'literal' | 'regexp' | 'structural'
+export async function search(
+    host: string,
+    query: string,
+    kind: SearchKind,
+    token: vscode.CancellationToken
+): Promise<vscode.Location[]> {
+    const result = await graphqlQuery<SearchParameters, SearchResult>(
+        `
+    query ($query: String!) {
+        search(query: $query, patternType:${kind}) {
+
+          results {
+            results {
+              ... on FileMatch {
+                ...FileMatchFields
+              }
+            }
+            limitHit
+            matchCount
+            elapsedMilliseconds
+          }
+        }
+      }
+
+      fragment FileMatchFields on FileMatch {
+        file {
+          url
+        }
+        lineMatches {
+          lineNumber
+          offsetAndLengths
+        }
+      }
+    `,
+        { query },
+        token
+    )
+
+    const results: vscode.Location[] = []
+    const nodes = result?.data?.search?.results?.results
+    for (const node of nodes || []) {
+        const url = node?.file?.url
+        if (!url) {
+            continue
+        }
+        for (const lineMatch of node.lineMatches || []) {
+            const line = lineMatch.lineNumber
+            if (!line) {
+                continue
+            }
+            for (const offsetsAndLength of lineMatch.offsetAndLengths || []) {
+                const [character, length] = offsetsAndLength
+                const start = new vscode.Position(line, character)
+                const end = new vscode.Position(line, character + length)
+                results.push(
+                    new vscode.Location(vscode.Uri.parse(`sourcegraph://${host}${url}`), new vscode.Range(start, end))
+                )
+            }
+        }
+    }
+    return results
+}
+
+interface SearchParameters {
+    query: string
+}
+interface SearchResult {
+    data?: {
+        search?: {
+            results?: {
+                results?: SearchResultNode[]
+            }
+        }
+    }
+}
+interface SearchResultNode {
+    file?: {
+        url?: string
+    }
+    lineMatches?: LineMatch[]
+}
+interface LineMatch {
+    lineNumber?: number
+    offsetAndLengths?: [number, number][]
+}
