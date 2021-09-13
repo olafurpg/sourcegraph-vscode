@@ -16,6 +16,7 @@ interface RepositoryMetadata {
     defaultOid?: string
     defaultAbbreviatedOid?: string
     defaultBranch?: string
+    id?: string
     commitToReferenceName?: Map<string, string>
 }
 
@@ -308,8 +309,14 @@ export class BrowseFileSystemProvider
     public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
         if (uri.toString(true).endsWith('/-')) return Promise.resolve([])
         log.appendLine(`READ_DIRECTORY ${uri.toString(true)}`)
-        await this.fetchBlob(uri.toString(true))
+        // try {
+        //     await this.fetchBlob(uri.toString(true))
+        // } catch (error) {
+        //     log.appendLine(`ERROR readDirectory.fetchBlob(${uri.toString(true)})`)
+        // }
+
         const parsed = parseUri(uri.toString(true))
+        log.appendLine(`READ_DIRECTORY parsed.path=${parsed.path}`)
         if (typeof parsed.path === 'undefined') {
             parsed.path = ''
         }
@@ -447,6 +454,7 @@ export class BrowseFileSystemProvider
             token || emptyCancelationToken()
         )
         metadata = {
+            id: response?.data?.repositoryRedirect?.id,
             defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
             defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
             defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
@@ -483,6 +491,7 @@ interface RevisionParameters {
 interface RevisionResult {
     data?: {
         repositoryRedirect?: {
+            id?: string
             commit?: {
                 oid?: string
                 abbreviatedOID?: string
@@ -500,6 +509,7 @@ const RevisionQuery = `
 query Revision($repository: String!) {
   repositoryRedirect(name: $repository) {
     ... on Repository {
+      id
       mirrorInfo {
         cloneInProgress
         cloneProgress
