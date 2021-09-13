@@ -85,17 +85,17 @@ interface RepositoryNode {
     isFork: boolean
 }
 
-type SearchKind = 'literal' | 'regexp' | 'structural'
+type PatternType = 'literal' | 'regexp' | 'structural'
 export async function search(
     host: string,
     query: string,
-    kind: SearchKind,
+    patternType: PatternType,
     token: vscode.CancellationToken
 ): Promise<vscode.Location[]> {
     const result = await graphqlQuery<SearchParameters, SearchResult>(
         `
-    query ($query: String!) {
-        search(query: $query, patternType:${kind}) {
+    query Search($query: String!) {
+        search(query: $query, patternType:${patternType}) {
 
           results {
             results {

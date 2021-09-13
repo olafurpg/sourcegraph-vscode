@@ -4,6 +4,7 @@ import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
+import { SourcegraphSemanticTokenProvider } from './SourcegraphSemanticTokenProvider'
 
 export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
     const fs = new BrowseFileSystemProvider()
@@ -13,16 +14,31 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
     const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs, showCollapseAll: true })
     fs.setTreeView(treeView)
+    const semanticTokens = new SourcegraphSemanticTokenProvider()
     context.subscriptions.push(treeView)
     context.subscriptions.push(vscode.commands.registerCommand('extension.browse', () => browseCommand(fs)))
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.searchInEditor', () => searchInEditor(semanticTokens))
+    )
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', (uri: string) => {
             log.appendLine(`openFile=${uri}`)
             openFileCommand(vscode.Uri.parse(uri))
         })
     )
+    vscode.languages.registerReferenceProvider({ language: 'sourcegraph' }, fs)
+    vscode.languages.registerDocumentSemanticTokensProvider({ language: 'sourcegraph' }, semanticTokens, semanticTokens)
     vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
     fs.didFocus(vscode.window.activeTextEditor?.document.uri)
+}
+
+async function searchInEditor(tokens: SourcegraphSemanticTokenProvider): Promise<void> {
+    try {
+        const textDocument = await vscode.workspace.openTextDocument({ language: 'sourcegraph' })
+        await vscode.window.showTextDocument(textDocument)
+    } catch (error) {
+        log.appendLine(`ERROR searchInEditor ${error}`)
+    }
 }
 
 async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {

@@ -3,7 +3,7 @@ import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, repoUriRevision } from './parseRepoUrl'
-import { graphqlQuery } from './graphqlQuery'
+import { graphqlQuery, search } from './graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
 
@@ -194,12 +194,29 @@ export class BrowseFileSystemProvider
     private readonly cache = new Map<string, Blob>()
     private readonly repos = new Set<string>()
 
+    private async searchReferences(
+        document: vscode.TextDocument,
+        token: vscode.CancellationToken
+    ): Promise<vscode.Location[]> {
+        const repos = [...this.repos]
+            .map(repo => {
+                const parsed = parseUri(repo)
+                const revision = parsed.revision ? `@${parsed.revision}` : ''
+                return `repo:^${parsed.repository}$${revision}`
+            })
+            .join(' OR ')
+        const query = `(${repos}) AND ${document.getText()}`
+        log.appendLine(`QUERY ${query}`)
+        return await search('sourcegraph.com', query, 'literal', token)
+    }
+
     public async provideReferences(
         document: vscode.TextDocument,
         position: vscode.Position,
         context: vscode.ReferenceContext,
         token: vscode.CancellationToken
     ): Promise<vscode.Location[] | undefined> {
+        if (document.languageId === 'sourcegraph') return this.searchReferences(document, token)
         const blob = await this.fetchBlob(document.uri.toString(true))
         const definition = await graphqlQuery<ReferencesParameters, ReferencesResult>(
             ReferencesQuery,
