@@ -26,20 +26,25 @@
   ],
   "main": "./out/extension",
   "contributes": {
-    "languages": [{
-      "id": "sourcegraph",
-      "aliases": [
-        "Sourcegraph",
-        "sourcegraph"
-      ],
-      "extensions": [
-        ".sourcegraph"
-      ],
-      "//": "TODO: experiment with adding an iconFont like here https://github.com/microsoft/vscode/issues/114942#issuecomment-773457375",
-      "configuration": "./language-configuration.json"
-    }],
+    "languages": [
+      {
+        "id": "sourcegraph",
+        "aliases": [
+          "Sourcegraph",
+          "sourcegraph"
+        ],
+        "extensions": [
+          ".sourcegraph"
+        ],
+        "//": "TODO: experiment with adding an iconFont like here https://github.com/microsoft/vscode/issues/114942#issuecomment-773457375",
+        "configuration": "./language-configuration.json"
+      }
+    ],
     "viewsWelcome": [
-      {"view": "sourcegraph.files", "contents": "[Browse](command:extension.browse)"}
+      {
+        "view": "sourcegraph.files",
+        "contents": "[Browse](command:extension.browse)"
+      }
     ],
     "commands": [
       {
