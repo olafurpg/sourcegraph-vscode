@@ -13,8 +13,9 @@ interface BrowseQuickPickItem extends vscode.QuickPickItem {
 function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
     const parsed = parseBrowserRepoURL(new URL(value))
     if (parsed.path) {
+        const revision = parsed.revision ? `@${parsed.revision}` : ''
         return {
-            uri: `sourcegraph://${parsed.url.host}/${parsed.repository}/-/blob/${parsed.path}`,
+            uri: `sourcegraph://${parsed.url.host}/${parsed.repository}${revision}/-/blob/${parsed.path}`,
             label: parsed.path,
             description: parsed.repository,
             detail: value,
@@ -118,10 +119,14 @@ export class BrowseQuickPick {
                 try {
                     if (selection) {
                         if (selection.repo) {
+                            const originalUri = selection.uri
                             if (!selection.uri || !parseBrowserRepoUri(selection.uri).path) {
                                 selection.uri = await fs.defaultFileUri(selection.repo)
                             }
                             const parsed = parseBrowserRepoUri(selection.uri)
+                            log.appendLine(
+                                `SELECT original=${originalUri} uri=${selection.uri} parsed.revision=${parsed.revision}`
+                            )
                             if (!parsed.revision) {
                                 const metadata = await fs.repositoryMetadata(parsed.repository)
                                 parsed.revision = metadata?.defaultBranch || 'HEAD'

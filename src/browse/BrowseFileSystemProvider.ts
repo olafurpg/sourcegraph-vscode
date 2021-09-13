@@ -365,9 +365,15 @@ export class BrowseFileSystemProvider
         const uri = `sourcegraph://sourcegraph.com/${repository}@${revision}`
         const files = await this.downloadFiles(parseUri(uri), revision)
         const readmes = files.filter(name => name.match(/readme/i))
-        const candidates = readmes ? readmes : files
+        const candidates = readmes.length > 0 ? readmes : files
         let readme: string | undefined
+        log.appendLine(`CANDIDATES: ${JSON.stringify(files)} ${JSON.stringify(readmes)}`)
         for (const candidate of candidates) {
+            log.appendLine(`CANDIDATE: ${JSON.stringify(candidate)}`)
+            if (candidate === '' || candidate === 'lsif-java.json') {
+                // Skip auto-generated file for JVM packages
+                continue
+            }
             if (!readme) {
                 readme = candidate
             } else if (candidate.length < readme.length) {
