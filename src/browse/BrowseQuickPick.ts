@@ -15,7 +15,7 @@ export class BrowseQuickPick {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
             pick.title = 'Open a file, paste a Sourcegraph URL or type repo:QUERY to open a repository'
-            pick.matchOnDescription
+            pick.matchOnDetail = true
             let isAllFilesEnabled = false
             let token: vscode.CancellationTokenSource | undefined
             const onDidChangeValue = async (value: string) => {
@@ -68,10 +68,9 @@ export class BrowseQuickPick {
                                 continue
                             }
                             const uri = `${repo.repositoryUri}/-/blob/${file}`
-                            const label = `${file} - ${repo.repositoryLabel}`
                             newItems.push({
                                 uri,
-                                label,
+                                label: file,
                                 detail: repo.repositoryLabel,
                             })
                         }
