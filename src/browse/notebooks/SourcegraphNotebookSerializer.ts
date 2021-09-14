@@ -35,7 +35,6 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
         notebook: vscode.NotebookDocument,
         controller: vscode.NotebookController
     ): Promise<void> {
-        const order = this.order
         for (const cell of cells) {
             const execution = controller.createNotebookCellExecution(cell)
             execution.executionOrder = ++this.order
@@ -47,24 +46,25 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
                     SearchPatternType.literal,
                     execution.token
                 )
-                const items: vscode.NotebookCellOutputItem[] = results.map((location, i) => {
-                    const id = `execution-${i}-${order}`
+                const items: string[] = results.slice(0, 10).map(location => {
                     const line = location.range.start.line + 1
                     const character = location.range.start.character
                     const uri = `${location.uri.toString(true)}?L${line}:${character}`
-                    return new vscode.NotebookCellOutputItem(
-                        new TextEncoder().encode(
-                            JSON.stringify({
-                                uri,
-                                id,
-                                html: `<button type='button' id='${id}'>${location.uri.path}?L${line}:${character}</button>`,
-                            })
-                        ),
-                        'application/sourcegraph-location'
-                    )
+                    return `<button type='button' class='sourcegraph-location' id='${uri}'>${location.uri.path}?L${line}:${character}</button>`
                 })
                 log.appendLine(`ITEMS ${JSON.stringify(items.length)}`)
-                execution.replaceOutput(new vscode.NotebookCellOutput(items))
+                execution.replaceOutput(
+                    new vscode.NotebookCellOutput([
+                        new vscode.NotebookCellOutputItem(
+                            new TextEncoder().encode(
+                                JSON.stringify({
+                                    html: items.join('\n'),
+                                })
+                            ),
+                            'application/sourcegraph-location'
+                        ),
+                    ])
+                )
                 execution.end(true, Date.now())
             } catch (error) {
                 execution.replaceOutput(

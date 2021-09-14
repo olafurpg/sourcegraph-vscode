@@ -3,13 +3,15 @@ export const activate = context => ({
     if (!context.postMessage) {
       return
     }
-    const json = data.json()
-    element.innerHTML += json.html
-    document.querySelector(`#${json.id}`).addEventListener('click', () => {
-      context.postMessage({
-        request: 'openEditor',
-        uri: json.uri,
+    element.innerHTML = data.json().html
+    const elements = document.querySelectorAll(`button.sourcegraph-location`)
+    for (const element of elements) {
+      element.addEventListener('click', event => {
+        context.postMessage({
+          request: 'openEditor',
+          uri: event.target.id,
+        })
       })
-    })
+    }
   },
 })
