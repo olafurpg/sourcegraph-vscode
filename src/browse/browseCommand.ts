@@ -5,6 +5,7 @@ import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
 import { SourcegraphCompletionItemProvider } from './SourcegraphCompletionItemProvider'
+import { SourcegraphNotebookSerializer } from './notebooks/SourcegraphNotebookSerializer'
 import { SourcegraphSemanticTokenProvider } from './SourcegraphSemanticTokenProvider'
 
 export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
@@ -35,6 +36,8 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
     )
     vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
     fs.didFocus(vscode.window.activeTextEditor?.document.uri)
+    vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
+    // const controller = vscode.notebooks.createNotebookController('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
 }
 
 async function searchInEditor(tokens: SourcegraphSemanticTokenProvider): Promise<void> {

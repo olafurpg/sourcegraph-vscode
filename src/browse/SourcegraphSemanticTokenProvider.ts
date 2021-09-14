@@ -36,7 +36,7 @@ export class SourcegraphSemanticTokenProvider
         token: vscode.CancellationToken
     ): vscode.SemanticTokens {
         const builder = new vscode.SemanticTokensBuilder(this)
-        const lines = document.getText().split(/\n/)
+        const lines = document.getText().split(/\r?\n/g)
         const patternType = SearchPatternType.regexp
         const interpretComments = true
         for (const [line, text] of lines.entries()) {

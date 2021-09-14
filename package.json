@@ -11,12 +11,13 @@
     "url": "https://github.com/sourcegraph/sourcegraph-vscode.git"
   },
   "engines": {
-    "vscode": "^1.52.0"
+    "vscode": "^1.60.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
+    "onNotebook:sourcegraph-notebook",
     "onFileSystem:sourcegraph",
     "onLanguage:sourcegraph",
     "onView:sourcegraph",
@@ -26,7 +27,20 @@
   ],
   "main": "./out/extension",
   "contributes": {
+    "notebooks": [
+			{
+				"type": "sourcegraph-notebook",
+				"displayName": "Sourcegraph Notebook",
+				"priority": "option",
+				"selector": [
+					{
+						"filenamePattern": "*.snb.{md,markdown}"
+					}
+				]
+			}
+		],
     "languages": [
+
       {
         "id": "sourcegraph",
         "aliases": [
@@ -194,7 +208,7 @@
     "@sourcegraph/tsconfig": "^4.0.1",
     "@types/node": "14.17.15",
     "@types/shelljs": "^0.8.9",
-    "@types/vscode": "1.52.0",
+    "@types/vscode": "1.60.0",
     "eslint": "^7.32.0",
     "husky": "^4.3.6",
     "nyc": "^15.1.0",
