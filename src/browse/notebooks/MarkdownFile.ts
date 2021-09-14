@@ -22,9 +22,17 @@ function parseMarkdownParts(content: string): MarkdownPart[] {
     const lines = content.split(/\r?\n/g)
     const result: MarkdownPart[] = []
     let i = 0
+    let markupBuffer: string[] = []
+    function flushMarkupBuffer() {
+        if (markupBuffer.length > 0) {
+            result.push(new MarkdownPart(MarkdownPartKind.Markup, markupBuffer.join('\n')))
+            markupBuffer = []
+        }
+    }
     while (i < lines.length) {
         const line = lines[i]
         if (line.startsWith('```sourcegraph')) {
+            flushMarkupBuffer()
             i += 1
             const query: string[] = []
             let isEmittedPart = false
@@ -32,7 +40,7 @@ function parseMarkdownParts(content: string): MarkdownPart[] {
                 const queryLine = lines[i]
                 if (queryLine.startsWith('```')) {
                     console.log(`startBack=${line} endBack=${queryLine}`)
-                    result.push(new MarkdownPart(MarkdownPartKind.CODE_FENCE, query.join('\n'), line, queryLine))
+                    result.push(new MarkdownPart(MarkdownPartKind.CodeFence, query.join('\n'), line, queryLine))
                     isEmittedPart = true
                     break
                 } else {
@@ -41,19 +49,20 @@ function parseMarkdownParts(content: string): MarkdownPart[] {
                 }
             }
             if (!isEmittedPart) {
-                result.push(new MarkdownPart(MarkdownPartKind.CODE_FENCE, query.join('\n'), line))
+                result.push(new MarkdownPart(MarkdownPartKind.CodeFence, query.join('\n'), line))
             }
         } else {
-            result.push(new MarkdownPart(MarkdownPartKind.MARKUP, line))
+            markupBuffer.push(line)
         }
         i += 1
     }
+    flushMarkupBuffer()
     return result
 }
 
 export enum MarkdownPartKind {
-    MARKUP = 1,
-    CODE_FENCE = 2,
+    Markup = 1,
+    CodeFence = 2,
 }
 
 export class MarkdownPart {
