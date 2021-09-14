@@ -59,7 +59,7 @@ async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
     }
 }
 
-async function openFileCommand(uri: vscode.Uri): Promise<void> {
+export async function openFileCommand(uri: vscode.Uri): Promise<void> {
     const textDocument = await vscode.workspace.openTextDocument(uri)
     const parsed = parseBrowserRepoURL(new URL(uri.toString(true).replace('sourcegraph://', 'https://')))
     await vscode.window.showTextDocument(textDocument, {

@@ -2,6 +2,7 @@ import * as vscode from 'vscode'
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
 import { log } from '../log'
+import { SearchPatternType } from './highlighting/scanner'
 // import { log } from '../log'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
@@ -85,17 +86,16 @@ interface RepositoryNode {
     isFork: boolean
 }
 
-type PatternType = 'literal' | 'regexp' | 'structural'
 export async function search(
     host: string,
     query: string,
-    patternType: PatternType,
+    patternType: SearchPatternType,
     token: vscode.CancellationToken
 ): Promise<vscode.Location[]> {
     const result = await graphqlQuery<SearchParameters, SearchResult>(
         `
     query Search($query: String!) {
-        search(query: $query, patternType:${patternType}) {
+        search(query: $query, patternType:${SearchPatternType[patternType]}) {
 
           results {
             results {

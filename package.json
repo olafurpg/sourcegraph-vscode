@@ -27,20 +27,30 @@
   ],
   "main": "./out/extension",
   "contributes": {
+    "notebookRenderer": [
+      {
+        "id": "sourcegraph-location-renderer",
+        "displayName": "Sourcegraph Location Renderer",
+        "mimeTypes": [
+          "application/sourcegraph-location"
+        ],
+        "entrypoint": "./src/browse/notebooks/SourcegraphLocationRenderer.js",
+        "requiresMessaging": "always"
+      }
+    ],
     "notebooks": [
-			{
-				"type": "sourcegraph-notebook",
-				"displayName": "Sourcegraph Notebook",
-				"priority": "option",
-				"selector": [
-					{
-						"filenamePattern": "*.snb.{md,markdown}"
-					}
-				]
-			}
-		],
+      {
+        "type": "sourcegraph-notebook",
+        "displayName": "Sourcegraph Notebook",
+        "priority": "option",
+        "selector": [
+          {
+            "filenamePattern": "*.snb.{md,markdown}"
+          }
+        ]
+      }
+    ],
     "languages": [
-
       {
         "id": "sourcegraph",
         "aliases": [
@@ -209,6 +219,7 @@
     "@types/node": "14.17.15",
     "@types/shelljs": "^0.8.9",
     "@types/vscode": "1.60.0",
+    "@types/vscode-notebook-renderer": "^1.60.0",
     "eslint": "^7.32.0",
     "husky": "^4.3.6",
     "nyc": "^15.1.0",

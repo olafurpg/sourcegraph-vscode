@@ -6,6 +6,7 @@ import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, r
 import { graphqlQuery, search } from './graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
+import { SearchPatternType } from './highlighting/scanner'
 
 export interface RepositoryFile {
     repositoryUri: string
@@ -207,7 +208,7 @@ export class BrowseFileSystemProvider
             .join(' OR ')
         const query = `(${repos}) AND ${document.getText()}`
         log.appendLine(`QUERY ${query}`)
-        return await search('sourcegraph.com', query, 'literal', token)
+        return await search('sourcegraph.com', query, SearchPatternType.literal, token)
     }
 
     public async provideReferences(
