@@ -2,7 +2,7 @@ import { TextDecoder, TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { log } from '../../log'
 import { openFileCommand } from '../browseCommand'
-import { search } from '../graphqlQuery'
+import { searchHtml } from '../graphqlQuery'
 import { SearchPatternType } from '../highlighting/scanner'
 import { MarkdownFile, MarkdownPart, MarkdownPartKind } from './MarkdownFile'
 
@@ -40,25 +40,19 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
             execution.executionOrder = ++this.order
             try {
                 execution.start(Date.now())
-                const results = await search(
+                const html = await searchHtml(
                     'sourcegraph.com',
                     cell.document.getText(),
                     SearchPatternType.literal,
                     execution.token
                 )
-                const items: string[] = results.slice(0, 10).map(location => {
-                    const line = location.range.start.line + 1
-                    const character = location.range.start.character
-                    const uri = `${location.uri.toString(true)}?L${line}:${character}`
-                    return `<button type='button' class='sourcegraph-location' id='${uri}'>${location.uri.path}?L${line}:${character}</button>`
-                })
-                log.appendLine(`ITEMS ${JSON.stringify(items.length)}`)
+                log.appendLine(`HTML ${html}`)
                 execution.replaceOutput(
                     new vscode.NotebookCellOutput([
                         new vscode.NotebookCellOutputItem(
                             new TextEncoder().encode(
                                 JSON.stringify({
-                                    html: items.join('\n'),
+                                    html,
                                 })
                             ),
                             'application/sourcegraph-location'

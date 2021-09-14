@@ -1,6 +1,5 @@
 import * as vscode from 'vscode'
 import { scanSearchQuery, SearchPatternType } from './highlighting/scanner'
-import { log } from '../log'
 import { decorate, DecoratedToken } from './highlighting/decoratedToken'
 
 export class SourcegraphSemanticTokenProvider
@@ -48,10 +47,8 @@ export class SourcegraphSemanticTokenProvider
                         const end = new vscode.Position(line, decoratedToken.range.end)
                         const range = new vscode.Range(start, end)
                         const type = this.sourcegraphDecoratedTokenTypeToSemanticTokenType(decoratedToken, patternType)
-                        log.appendLine(`TOKEN ${document.getText(range)} '${decoratedToken.type}' '${type}'`)
                         if (type) {
                             if (!this.tokenTypes.includes(type)) {
-                                log.appendLine(`ERROR: unknown token type '${type}'`)
                             }
                             builder.push(range, type)
                         }

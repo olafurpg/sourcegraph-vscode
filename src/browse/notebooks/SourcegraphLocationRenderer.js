@@ -4,12 +4,12 @@ export const activate = context => ({
       return
     }
     element.innerHTML = data.json().html
-    const elements = document.querySelectorAll(`button.sourcegraph-location`)
+    const elements = document.querySelectorAll(`.sourcegraph-location`)
     for (const element of elements) {
-      element.addEventListener('click', event => {
+      element.addEventListener('click', () => {
         context.postMessage({
           request: 'openEditor',
-          uri: event.target.id,
+          uri: element.id,
         })
       })
     }

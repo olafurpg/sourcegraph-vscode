@@ -62,8 +62,10 @@ async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
 export async function openFileCommand(uri: vscode.Uri): Promise<void> {
     const textDocument = await vscode.workspace.openTextDocument(uri)
     const parsed = parseBrowserRepoURL(new URL(uri.toString(true).replace('sourcegraph://', 'https://')))
+    const selection = getSelection(parsed, textDocument)
+    log.appendLine(`SELECTION OPEN ${JSON.stringify(parsed.position)}`)
     await vscode.window.showTextDocument(textDocument, {
-        selection: getSelection(parsed, textDocument),
+        selection,
         viewColumn: vscode.ViewColumn.Active,
     })
 }
@@ -74,8 +76,11 @@ function offsetRange(line: number, character: number): vscode.Range {
 }
 
 function getSelection(parsed: ParsedRepoURI, textDocument: vscode.TextDocument): vscode.Range | undefined {
-    if (parsed?.position?.line && parsed?.position?.character) {
+    if (typeof parsed?.position?.line !== 'undefined' && typeof parsed?.position?.character !== 'undefined') {
         return offsetRange(parsed.position.line - 1, parsed.position.character)
+    }
+    if (typeof parsed?.position?.line !== 'undefined') {
+        return offsetRange(parsed.position.line - 1, 0)
     }
     if (parsed.path && isSymbolicFilename(parsed.path)) {
         const fileNames = parsed.path.split('/')

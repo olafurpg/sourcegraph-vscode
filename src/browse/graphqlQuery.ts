@@ -85,6 +85,88 @@ interface RepositoryNode {
     name: string
     isFork: boolean
 }
+function searchQuery(patternType: SearchPatternType): string {
+    return `
+query Search($query: String!) {
+    search(query: $query, patternType:${SearchPatternType[patternType]}) {
+
+      results {
+        results {
+          ... on FileMatch {
+            ...FileMatchFields
+          }
+        }
+        limitHit
+        matchCount
+        elapsedMilliseconds
+      }
+    }
+  }
+
+  fragment FileMatchFields on FileMatch {
+    file {
+      url
+    }
+    lineMatches {
+      lineNumber
+      offsetAndLengths
+      preview
+    }
+  }
+`
+}
+export async function searchHtml(
+    host: string,
+    query: string,
+    patternType: SearchPatternType,
+    token: vscode.CancellationToken
+): Promise<string> {
+    const result = await graphqlQuery<SearchParameters, SearchResult>(searchQuery(patternType), { query }, token)
+    const html: string[] = []
+    const nodes = result?.data?.search?.results?.results
+    for (const node of (nodes || []).slice(0, 4)) {
+        const url = node?.file?.url
+        if (!url) {
+            continue
+        }
+        html.push('<p>')
+        html.push(`<code>${url}</code>`)
+        html.push('<pre>')
+        for (const [lineMatchIndex, lineMatch] of (node.lineMatches || []).entries()) {
+            const line = lineMatch.lineNumber
+            if (!line) {
+                continue
+            }
+            const preview = lineMatch.preview
+            if (!preview) {
+                continue
+            }
+            if (lineMatchIndex > 0) {
+                html.push('\n')
+            }
+            const uri = `sourcegraph://${host}${url}?L${line + 1}:0`
+            let index = 0
+            const highlightedPreview: string[] = []
+            highlightedPreview.push(`L${line}: `)
+            for (const offsetsAndLength of lineMatch.offsetAndLengths || []) {
+                const [start, length] = offsetsAndLength
+                const end = start + length - 1
+                highlightedPreview.push(escapeHtml(preview.slice(index, start)))
+                highlightedPreview.push(`<mark>`)
+                highlightedPreview.push(escapeHtml(preview.slice(start, end)))
+                highlightedPreview.push(`</mark>`)
+                index = end
+            }
+            highlightedPreview.push(escapeHtml(preview.slice(index, preview.length)))
+            html.push(
+                `<a id='${uri}' style='cursor:pointer' class='sourcegraph-location'>${highlightedPreview.join('')}</a>`
+            )
+        }
+        html.push('</pre>')
+        html.push('</p>')
+    }
+    return html.join('')
+}
 
 export async function search(
     host: string,
@@ -92,38 +174,7 @@ export async function search(
     patternType: SearchPatternType,
     token: vscode.CancellationToken
 ): Promise<vscode.Location[]> {
-    const result = await graphqlQuery<SearchParameters, SearchResult>(
-        `
-    query Search($query: String!) {
-        search(query: $query, patternType:${SearchPatternType[patternType]}) {
-
-          results {
-            results {
-              ... on FileMatch {
-                ...FileMatchFields
-              }
-            }
-            limitHit
-            matchCount
-            elapsedMilliseconds
-          }
-        }
-      }
-
-      fragment FileMatchFields on FileMatch {
-        file {
-          url
-        }
-        lineMatches {
-          lineNumber
-          offsetAndLengths
-        }
-      }
-    `,
-        { query },
-        token
-    )
-
+    const result = await graphqlQuery<SearchParameters, SearchResult>(searchQuery(patternType), { query }, token)
     const results: vscode.Location[] = []
     const nodes = result?.data?.search?.results?.results
     for (const node of nodes || []) {
@@ -170,4 +221,16 @@ interface SearchResultNode {
 interface LineMatch {
     lineNumber?: number
     offsetAndLengths?: [number, number][]
+    preview?: string
+}
+
+// FIXME: this method is copy pasted from Stackoverflow and should be replaced with a proper implementation
+// https://stackoverflow.com/a/6234804
+function escapeHtml(unescapedHtml: string): string {
+    return unescapedHtml
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
 }
