@@ -41,6 +41,7 @@ query Search($query: String!) {
         token
     )
 }
+
 export async function searchQuery(
     host: string,
     query: string,

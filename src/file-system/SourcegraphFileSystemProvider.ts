@@ -2,7 +2,7 @@
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { SourcegraphUri } from './SourcegraphUri'
-import { searchQuery } from '../queries/search'
+import { searchQuery } from '../queries/searchQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'

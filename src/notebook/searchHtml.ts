@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from '../highlighting/scanner'
-import { searchQueryResult } from '../queries/search'
+import { searchQueryResult } from '../queries/searchQuery'
 
 export async function searchHtml(
     host: string,
