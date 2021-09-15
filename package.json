@@ -76,8 +76,8 @@
         "title": "Sourcegraph: Browse"
       },
       {
-        "command": "extension.searchInEditor",
-        "title": "Sourcegraph: Search in editor"
+        "command": "extension.createNewNotebook",
+        "title": "Sourcegraph: Create new notebook"
       },
       {
         "command": "extension.openFile",
