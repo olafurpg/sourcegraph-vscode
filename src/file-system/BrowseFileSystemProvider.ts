@@ -10,8 +10,7 @@ import { SearchPatternType } from '../highlighting/scanner'
 import { filesQuery } from '../queries/filesQuery'
 import { definitionQuery } from '../queries/definitionQuery'
 import { LocationNode } from '../queries/LocationNode'
-import { revisionQuery } from './revisionQuery'
-import { RepositoryMetadata } from './RepositoryMetadata'
+import { repositoryMetadataQuery, RepositoryMetadata } from './repositoryMetadataQuery'
 import { RepositoryFile } from './RepositoryFile'
 import { contentQuery } from './contentQuery'
 import { hoverQuery } from './hoverQuery'
@@ -77,7 +76,7 @@ export class BrowseFileSystemProvider
                 if (parent && !this.isExpandedNode.has(parent)) {
                     await this.didFocusString(parent, false)
                 }
-                log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
+                // log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
                 await this.treeView.reveal(uri, {
                     focus: true,
                     select: isDestinationNode,
@@ -94,9 +93,9 @@ export class BrowseFileSystemProvider
         }
         const metadata = await this.repositoryMetadata(parsed.repository, emptyCancelationToken())
         let revision = parsed.revision
-        log.appendLine(
-            `TREE_ITEM_LABEL ${parsed.revision} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
-        )
+        // log.appendLine(
+        //     `TREE_ITEM_LABEL ${parsed.revision} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
+        // )
         if (metadata?.defaultBranch && (!revision || revision === metadata?.defaultOid)) {
             revision = metadata.defaultBranch
         }
@@ -462,7 +461,7 @@ export class BrowseFileSystemProvider
     ): Promise<RepositoryMetadata | undefined> {
         let metadata = this.metadata.get(repository)
         if (metadata) return metadata
-        metadata = await revisionQuery(
+        metadata = await repositoryMetadataQuery(
             {
                 repository: repository,
             },

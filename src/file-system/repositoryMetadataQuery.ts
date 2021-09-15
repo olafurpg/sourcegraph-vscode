@@ -1,8 +1,15 @@
 import * as vscode from 'vscode'
 import { graphqlQuery } from '../queries/graphqlQuery'
-import { RepositoryMetadata } from './RepositoryMetadata'
 
-export async function revisionQuery(
+export interface RepositoryMetadata {
+    defaultOid?: string
+    defaultAbbreviatedOid?: string
+    defaultBranch?: string
+    id?: string
+    commitToReferenceName?: Map<string, string>
+}
+
+export async function repositoryMetadataQuery(
     parameters: RevisionParameters,
     token: vscode.CancellationToken
 ): Promise<RepositoryMetadata> {
@@ -15,10 +22,10 @@ export async function revisionQuery(
     }
 }
 
-export interface RevisionParameters {
+interface RevisionParameters {
     repository: string
 }
-export interface RevisionResult {
+interface RevisionResult {
     data?: {
         repositoryRedirect?: {
             id?: string
@@ -35,7 +42,7 @@ export interface RevisionResult {
         }
     }
 }
-export const RevisionQuery = `
+const RevisionQuery = `
 query Revision($repository: String!) {
   repositoryRedirect(name: $repository) {
     ... on Repository {
