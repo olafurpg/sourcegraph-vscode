@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from '../highlighting/scanner'
-import { graphqlQuery, SearchParameters, SearchResult, searchQuery, escapeHtml } from '../queries/graphqlQuery'
+import { searchQueryResult } from '../queries/search'
 
 export async function searchHtml(
     host: string,
@@ -8,7 +8,7 @@ export async function searchHtml(
     patternType: SearchPatternType,
     token: vscode.CancellationToken
 ): Promise<string> {
-    const result = await graphqlQuery<SearchParameters, SearchResult>(searchQuery(patternType), { query }, token)
+    const result = await searchQueryResult(host, query, patternType, token)
     const html: string[] = []
     const nodes = result?.data?.search?.results?.results
     for (const node of nodes || []) {
@@ -66,4 +66,15 @@ export async function searchHtml(
         html.push('</p>')
     }
     return html.join('')
+}
+
+// FIXME: this method is copy pasted from Stackoverflow and should be replaced with a proper implementation
+// https://stackoverflow.com/a/6234804
+export function escapeHtml(unescapedHtml: string): string {
+    return unescapedHtml
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
 }

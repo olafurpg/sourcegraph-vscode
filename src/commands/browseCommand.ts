@@ -8,7 +8,7 @@ import { SourcegraphUri } from '../file-system/SourcegraphUri'
 export async function browseCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {
         const uri = await new BrowseQuickPick().getBrowseUri(fs)
-        await openSourcegraphUriCommand(vscode.Uri.parse(uri))
+        await openSourcegraphUriCommand(uri)
     } catch (error) {
         if (typeof error !== 'undefined') {
             log.appendLine(`ERROR - browseCommand: ${error}`)
@@ -31,7 +31,7 @@ class BrowseQuickPick {
         }
     }
 
-    public async getBrowseUri(fs: SourcegraphFileSystemProvider): Promise<string> {
+    public async getBrowseUri(fs: SourcegraphFileSystemProvider): Promise<SourcegraphUri> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
@@ -119,7 +119,7 @@ class BrowseQuickPick {
                             }
                         }
                         this.addRecentlyBrowsedFile(selection.uri)
-                        resolve(selection.uri)
+                        resolve(SourcegraphUri.parse(selection.uri))
                         pick.dispose()
                     }
                 } catch (error) {
@@ -148,15 +148,14 @@ interface BrowseQuickPickItem extends vscode.QuickPickItem {
 }
 
 function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
-    const parsed = SourcegraphUri.parse(value)
-    if (parsed.path) {
-        const revision = parsed.revision ? `@${parsed.revision}` : ''
+    const uri = SourcegraphUri.parse(value)
+    if (uri.path) {
         return {
-            uri: `sourcegraph://${parsed.url.host}/${parsed.repository}${revision}/-/blob/${parsed.path}`,
-            label: parsed.path,
-            description: parsed.repository,
+            uri: uri.uri,
+            label: uri.path,
+            description: uri.repository,
             detail: value,
-            repo: parsed.repository,
+            repo: uri.repository,
         }
     }
     return undefined

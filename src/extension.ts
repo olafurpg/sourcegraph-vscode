@@ -9,6 +9,8 @@ import { createNewNotebookCommand } from './commands/createNewNotebookCommand'
 import { openSourcegraphUriCommand } from './commands/openSourcegraphUriCommand'
 import { SourcegraphCompletionItemProvider } from './notebook/SourcegraphCompletionItemProvider'
 import { SourcegraphNotebookSerializer } from './notebook/SourcegraphNotebookSerializer'
+import { log } from './log'
+import { SourcegraphUri } from './file-system/SourcegraphUri'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
@@ -115,8 +117,11 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('extension.createNewNotebook', () => createNewNotebookCommand())
     )
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.openFile', (uri: string) => {
-            openSourcegraphUriCommand(vscode.Uri.parse(uri))
+        vscode.commands.registerCommand('extension.openFile', uri => {
+            log.appendLine(`OPEN_FILE ${uri}`)
+            if (typeof uri === 'string') {
+                openSourcegraphUriCommand(SourcegraphUri.parse(uri))
+            }
         })
     )
 

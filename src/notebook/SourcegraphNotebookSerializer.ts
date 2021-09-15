@@ -5,6 +5,7 @@ import { openSourcegraphUriCommand } from '../commands/openSourcegraphUriCommand
 import { searchHtml } from './searchHtml'
 import { SearchPatternType } from '../highlighting/scanner'
 import { MarkdownFile, MarkdownPart, MarkdownPartKind } from './MarkdownFile'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
 
 export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer {
     private readonly decoder = new TextDecoder()
@@ -25,7 +26,7 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
             log.appendLine(`MESSAGE_CHANNEL ${JSON.stringify(event.message)}`)
             const uri = event.message?.uri
             if (event.message?.request === 'openEditor' && typeof uri === 'string') {
-                openSourcegraphUriCommand(vscode.Uri.parse(uri))
+                openSourcegraphUriCommand(SourcegraphUri.parse(uri))
             }
         })
     }

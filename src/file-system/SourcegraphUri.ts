@@ -23,6 +23,16 @@ export class SourcegraphUri {
         return SourcegraphUri.parse(`${this.repositoryUri()}/${newPath}`)
     }
 
+    public static fromParts(
+        host: string,
+        repository: string,
+        revision: string | undefined,
+        path: string | undefined
+    ): SourcegraphUri {
+        const revisionPath = revision ? `@${revision}` : ''
+        const pathPath = path ? `/-/blob/${path}` : ''
+        return SourcegraphUri.parse(`sourcegraph://${host}/${repository}${revisionPath}${pathPath}`)
+    }
     public static parse(uri: string): SourcegraphUri {
         uri = uri.replace('https://', 'sourcegraph://')
         const url = new URL(uri.replace('sourcegraph://', 'https://'))

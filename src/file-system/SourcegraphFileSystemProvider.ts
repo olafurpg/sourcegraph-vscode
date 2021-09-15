@@ -2,7 +2,7 @@
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { SourcegraphUri } from './SourcegraphUri'
-import { search } from '../queries/graphqlQuery'
+import { searchQuery } from '../queries/search'
 import { log } from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'
@@ -117,7 +117,7 @@ export class SourcegraphFileSystemProvider
                 ? {
                       command: 'extension.openFile',
                       title: 'Open file',
-                      arguments: [uri],
+                      arguments: [uri.uri],
                   }
                 : undefined
             return {
@@ -206,7 +206,7 @@ export class SourcegraphFileSystemProvider
             .join(' OR ')
         const query = `(${repos}) AND ${document.getText()}`
         log.appendLine(`QUERY ${query}`)
-        return await search(SRC_ENDPOINT_HOST, query, SearchPatternType.literal, token)
+        return await searchQuery(SRC_ENDPOINT_HOST, query, SearchPatternType.literal, token)
     }
 
     public async provideReferences(
@@ -256,14 +256,11 @@ export class SourcegraphFileSystemProvider
         let revision = node.resource.commit.oid
         if (metadata?.defaultBranch && revision === metadata?.defaultOid) {
             revision = metadata.defaultBranch
-        } else {
-            log.appendLine(
-                `NODE_TO_LOCATION oid=${node.resource.commit.oid} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
-            )
         }
         return new vscode.Location(
             vscode.Uri.parse(
-                `sourcegraph://${SRC_ENDPOINT_HOST}/${node.resource.repository.name}@${revision}/-/blob/${node.resource.path}`
+                SourcegraphUri.fromParts(SRC_ENDPOINT_HOST, node.resource.repository.name, revision, node.resource.path)
+                    .uri
             ),
             new vscode.Range(
                 new vscode.Position(node.range.start.line, node.range.start.character),
@@ -297,7 +294,6 @@ export class SourcegraphFileSystemProvider
     }
 
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        log.appendLine(`STAT: ${uri.toString(true)}`)
         try {
             const blob = await this.fetchBlob(sourcegraphUri(uri))
             return {
@@ -319,14 +315,12 @@ export class SourcegraphFileSystemProvider
 
     public async readFile(vscodeUri: vscode.Uri): Promise<Uint8Array> {
         const uri = sourcegraphUri(vscodeUri)
-        log.appendLine(`READ_FILE ${uri.uri}`)
         return (await this.fetchBlob(uri)).content
     }
 
     public async readDirectory(vscodeUri: vscode.Uri): Promise<[string, vscode.FileType][]> {
         const uri = sourcegraphUri(vscodeUri)
         if (uri.uri.endsWith('/-')) return Promise.resolve([])
-        log.appendLine(`READ_DIRECTORY uri.path=${uri.path}`)
         const tree = await this.getFileTree(uri)
         if (!tree) {
             return []
@@ -364,11 +358,12 @@ export class SourcegraphFileSystemProvider
         const token = new vscode.CancellationTokenSource()
         const defaultBranch = (await this.repositoryMetadata(repository, token.token))?.defaultBranch
         if (!defaultBranch) {
-            log.appendLine(`ERROR defaultFileUri no revision ${repository}`)
-            throw new Error(`ERROR defaultFileUri no revision ${repository}`)
+            const message = `ERROR defaultBranch no repository '${repository}'`
+            log.appendLine(message)
+            throw new Error(message)
         }
-        const uri = `sourcegraph://${SRC_ENDPOINT_HOST}/${repository}@${defaultBranch}`
-        const files = await this.downloadFiles(SourcegraphUri.parse(uri), defaultBranch)
+        const uri = SourcegraphUri.fromParts(SRC_ENDPOINT_HOST, repository, defaultBranch, undefined)
+        const files = await this.downloadFiles(uri, defaultBranch)
         const readmes = files.filter(name => name.match(/readme/i))
         const candidates = readmes.length > 0 ? readmes : files
         let readme: string | undefined
@@ -384,9 +379,7 @@ export class SourcegraphFileSystemProvider
             }
         }
         const defaultFile = readme ? readme : files[0]
-        return SourcegraphUri.parse(
-            `sourcegraph://${SRC_ENDPOINT_HOST}/${repository}@${defaultBranch}/-/blob/${defaultFile}`
-        )
+        return SourcegraphUri.fromParts(SRC_ENDPOINT_HOST, repository, defaultBranch, defaultFile)
     }
 
     private async fetchBlob(uri: SourcegraphUri): Promise<Blob> {

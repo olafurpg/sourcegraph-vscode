@@ -1,12 +1,9 @@
 import * as vscode from 'vscode'
-import { log } from '../log'
 import { SourcegraphUri } from '../file-system/SourcegraphUri'
 
-export async function openSourcegraphUriCommand(uri: vscode.Uri): Promise<void> {
-    const textDocument = await vscode.workspace.openTextDocument(uri)
-    const parsed = SourcegraphUri.parse(uri.toString(true))
-    const selection = getSelection(parsed, textDocument)
-    log.appendLine(`SELECTION OPEN ${JSON.stringify(parsed.position)}`)
+export async function openSourcegraphUriCommand(uri: SourcegraphUri): Promise<void> {
+    const textDocument = await vscode.workspace.openTextDocument(vscode.Uri.parse(uri.uri))
+    const selection = getSelection(uri, textDocument)
     await vscode.window.showTextDocument(textDocument, {
         selection,
         viewColumn: vscode.ViewColumn.Active,
