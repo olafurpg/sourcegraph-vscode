@@ -79,10 +79,10 @@ export class SourcegraphUri {
             url,
             repository,
             revision,
-            rawRevision,
-            commitID,
             path,
+            rawRevision,
             commitRange,
+            commitID,
             position,
             range
         )
