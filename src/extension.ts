@@ -10,7 +10,7 @@ import openSourcegraphUriCommand from './commands/openSourcegraphUriCommand'
 import { SourcegraphCompletionItemProvider } from './notebook/SourcegraphCompletionItemProvider'
 import { SourcegraphNotebookSerializer } from './notebook/SourcegraphNotebookSerializer'
 import { log } from './log'
-import { SourcegraphUri } from './file-system/SourcegraphUri'
+import SourcegraphUri from './file-system/SourcegraphUri'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')

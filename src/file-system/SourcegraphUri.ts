@@ -1,7 +1,7 @@
 import { URL, URLSearchParams } from 'url'
 import { Position, Range } from '../queries/Range'
 
-export class SourcegraphUri {
+export default class SourcegraphUri {
     private constructor(
         public readonly uri: string,
         public readonly url: URL,

@@ -2,10 +2,11 @@ import { TextDecoder, TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { log } from '../log'
 import openSourcegraphUriCommand from '../commands/openSourcegraphUriCommand'
-import { searchHtml } from './searchHtml'
+import searchHtml from './searchHtml'
 import { SearchPatternType } from '../highlighting/scanner'
-import { MarkdownFile, MarkdownPart, MarkdownPartKind } from './MarkdownFile'
-import { SourcegraphUri } from '../file-system/SourcegraphUri'
+import MarkdownFile, { MarkdownPart, MarkdownPartKind } from './MarkdownFile'
+import SourcegraphUri from '../file-system/SourcegraphUri'
+import { SRC_ENDPOINT_HOST } from '../file-system/SourcegraphFileSystemProvider'
 
 export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer {
     private readonly decoder = new TextDecoder()
@@ -23,17 +24,18 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
         controller.supportsExecutionOrder = true
         controller.executeHandler = this.executeNotebook
         this.messageChannel.onDidReceiveMessage(event => {
-            log.appendLine(`MESSAGE_CHANNEL ${JSON.stringify(event.message)}`)
             const uri = event.message?.uri
             if (event.message?.request === 'openEditor' && typeof uri === 'string') {
                 openSourcegraphUriCommand(SourcegraphUri.parse(uri))
+            } else if (event.message?.request === 'logMessage') {
+                log.appendLine(event.message.message)
             }
         })
     }
 
     public async executeNotebook(
         cells: vscode.NotebookCell[],
-        notebook: vscode.NotebookDocument,
+        _notebook: vscode.NotebookDocument,
         controller: vscode.NotebookController
     ): Promise<void> {
         for (const cell of cells) {
@@ -42,12 +44,11 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
             try {
                 execution.start(Date.now())
                 const html = await searchHtml(
-                    'sourcegraph.com',
+                    SRC_ENDPOINT_HOST,
                     cell.document.getText(),
                     SearchPatternType.literal,
                     execution.token
                 )
-                log.appendLine(`HTML ${html}`)
                 execution.replaceOutput(
                     new vscode.NotebookCellOutput([
                         new vscode.NotebookCellOutputItem(

@@ -47,7 +47,7 @@ export class SourcegraphSemanticTokenProvider
                         const start = new vscode.Position(line, decoratedToken.range.start)
                         const end = new vscode.Position(line, decoratedToken.range.end)
                         const range = new vscode.Range(start, end)
-                        const type = this.sourcegraphDecoratedTokenTypeToSemanticTokenType(decoratedToken, patternType)
+                        const type = sourcegraphDecoratedTokenTypeToSemanticTokenType(decoratedToken)
                         if (type) {
                             if (!this.tokenTypes.includes(type)) {
                             }
@@ -59,38 +59,35 @@ export class SourcegraphSemanticTokenProvider
         }
         return builder.build()
     }
+}
 
-    private sourcegraphDecoratedTokenTypeToSemanticTokenType(
-        token: DecoratedToken,
-        patternType: SearchPatternType
-    ): string {
-        switch (token.type) {
-            case 'closingParen':
-            case 'openingParen':
-                return 'namespace'
-            case 'comment':
-                return 'comment'
-            case 'field':
-                return 'property'
-            case 'filter':
-                return 'class'
-            case 'keyword':
-                return 'keyword'
-            case 'literal':
-                return 'number'
-            case 'metaPath':
-                return 'regexp'
-            case 'metaContextPrefix':
-            case 'metaPredicate':
-            case 'metaRegexp':
-            case 'metaRegexp':
-            case 'metaRepoRevisionSeparator':
-            case 'metaRevision':
-                return 'interface'
-            case 'pattern':
-                return ''
-            default:
-                return ''
-        }
+function sourcegraphDecoratedTokenTypeToSemanticTokenType(token: DecoratedToken): string {
+    switch (token.type) {
+        case 'closingParen':
+        case 'openingParen':
+            return 'namespace'
+        case 'comment':
+            return 'comment'
+        case 'field':
+            return 'property'
+        case 'filter':
+            return 'class'
+        case 'keyword':
+            return 'keyword'
+        case 'literal':
+            return 'number'
+        case 'metaPath':
+            return 'regexp'
+        case 'metaContextPrefix':
+        case 'metaPredicate':
+        case 'metaRegexp':
+        case 'metaRegexp':
+        case 'metaRepoRevisionSeparator':
+        case 'metaRevision':
+            return 'interface'
+        case 'pattern':
+            return ''
+        default:
+            return ''
     }
 }

@@ -3,7 +3,7 @@ import openSourcegraphUriCommand from './openSourcegraphUriCommand'
 import { log } from '../log'
 import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import repositoriesQuery from '../queries/repositoriesQuery'
-import { SourcegraphUri } from '../file-system/SourcegraphUri'
+import SourcegraphUri from '../file-system/SourcegraphUri'
 
 export default async function browseCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { SourcegraphUri } from './SourcegraphUri'
+import SourcegraphUri from './SourcegraphUri'
 import { searchQuery } from '../queries/searchQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
@@ -14,7 +14,7 @@ import contentQuery from '../queries/contentQuery'
 import hoverQuery from '../queries/hoverQuery'
 import referencesQuery from '../queries/referencesQuery'
 
-const SRC_ENDPOINT_HOST = 'sourcegraph.com'
+export const SRC_ENDPOINT_HOST = 'sourcegraph.com'
 
 export class SourcegraphFileSystemProvider
     implements

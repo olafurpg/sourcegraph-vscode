@@ -1,4 +1,4 @@
-export class MarkdownFile {
+export default class MarkdownFile {
     public static parseContent(content: string): MarkdownFile {
         return new MarkdownFile(parseMarkdownParts(content))
     }
