@@ -2,10 +2,10 @@ import * as vscode from 'vscode'
 import { log } from '../log'
 import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
-import { SourcegraphUri } from '../file-system/SourcegraphUri'
 import { SourcegraphCompletionItemProvider } from '../notebook/SourcegraphCompletionItemProvider'
 import { SourcegraphNotebookSerializer } from '../notebook/SourcegraphNotebookSerializer'
 import { SourcegraphSemanticTokenProvider } from '../highlighting/SourcegraphSemanticTokenProvider'
+import { openSourcegraphUriCommand } from './openSourcegraphUriCommand'
 
 export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
     const fs = new SourcegraphFileSystemProvider()
@@ -24,7 +24,7 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', (uri: string) => {
             log.appendLine(`openFile=${uri}`)
-            openFileCommand(vscode.Uri.parse(uri))
+            openSourcegraphUriCommand(vscode.Uri.parse(uri))
         })
     )
     vscode.languages.registerReferenceProvider({ language: 'sourcegraph' }, fs)
@@ -38,6 +38,16 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
 }
 
+async function browseCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
+    try {
+        const uri = await new BrowseQuickPick().getBrowseUri(fs)
+        log.appendLine(`QUICK_PICK_RESULT ${uri}`)
+        await openSourcegraphUriCommand(vscode.Uri.parse(uri))
+    } catch (error) {
+        log.appendLine(`ERROR - browseCommand: ${error}`)
+    }
+}
+
 async function searchInEditor(tokens: SourcegraphSemanticTokenProvider): Promise<void> {
     try {
         const textDocument = await vscode.workspace.openTextDocument({ language: 'sourcegraph' })
@@ -45,55 +55,4 @@ async function searchInEditor(tokens: SourcegraphSemanticTokenProvider): Promise
     } catch (error) {
         log.appendLine(`ERROR searchInEditor ${error}`)
     }
-}
-
-async function browseCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
-    try {
-        const uri = await new BrowseQuickPick().getBrowseUri(fs)
-        log.appendLine(`QUICK_PICK_RESULT ${uri}`)
-        await openFileCommand(vscode.Uri.parse(uri))
-    } catch (error) {
-        log.appendLine(`ERROR - browseCommand: ${error}`)
-    }
-}
-
-export async function openFileCommand(uri: vscode.Uri): Promise<void> {
-    const textDocument = await vscode.workspace.openTextDocument(uri)
-    const parsed = SourcegraphUri.parse(uri.toString(true))
-    const selection = getSelection(parsed, textDocument)
-    log.appendLine(`SELECTION OPEN ${JSON.stringify(parsed.position)}`)
-    await vscode.window.showTextDocument(textDocument, {
-        selection,
-        viewColumn: vscode.ViewColumn.Active,
-    })
-}
-
-function offsetRange(line: number, character: number): vscode.Range {
-    const position = new vscode.Position(line, character)
-    return new vscode.Range(position, position)
-}
-
-function getSelection(parsed: SourcegraphUri, textDocument: vscode.TextDocument): vscode.Range | undefined {
-    if (typeof parsed?.position?.line !== 'undefined' && typeof parsed?.position?.character !== 'undefined') {
-        return offsetRange(parsed.position.line - 1, parsed.position.character)
-    }
-    if (typeof parsed?.position?.line !== 'undefined') {
-        return offsetRange(parsed.position.line - 1, 0)
-    }
-    if (parsed.path && isSymbolicFilename(parsed.path)) {
-        const fileNames = parsed.path.split('/')
-        const fileName = fileNames[fileNames.length - 1]
-        const symbolName = fileName.split('.')[0]
-        const text = textDocument.getText()
-        const symbolMatches = new RegExp(` ${symbolName}\\b`).exec(text)
-        if (symbolMatches) {
-            const position = textDocument.positionAt(symbolMatches.index + 1)
-            return new vscode.Range(position, position)
-        }
-    }
-    return undefined
-}
-
-function isSymbolicFilename(path: string): boolean {
-    return !(path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.txt') || path.endsWith('.log'))
 }
