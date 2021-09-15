@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from '../highlighting/scanner'
-import { graphqlQuery, SearchParameters, SearchResult, searchQuery, escapeHtml } from '../file-system/graphqlQuery'
+import { graphqlQuery, SearchParameters, SearchResult, searchQuery, escapeHtml } from '../queries/graphqlQuery'
 
 export async function searchHtml(
     host: string,

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from './graphqlQuery'
+import { graphqlQuery } from '../queries/graphqlQuery'
 
 export async function repositoriesQuery(query: string, token: vscode.CancellationToken): Promise<string[]> {
     const result = await graphqlQuery<RepositoryParameters, RepositoryResult>(

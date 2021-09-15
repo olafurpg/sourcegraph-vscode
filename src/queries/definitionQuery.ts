@@ -1,6 +1,6 @@
 import { PositionParameters } from './PositionParameters'
 import * as vscode from 'vscode'
-import { graphqlQuery } from '../file-system/graphqlQuery'
+import { graphqlQuery } from './graphqlQuery'
 import { LocationNode } from './LocationNode'
 
 export async function definitionQuery(

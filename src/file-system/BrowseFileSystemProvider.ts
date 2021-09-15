@@ -3,7 +3,7 @@ import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, repoUriRevision } from './parseRepoUrl'
-import { graphqlQuery, search } from './graphqlQuery'
+import { graphqlQuery, search } from '../queries/graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'
@@ -475,19 +475,12 @@ export class BrowseFileSystemProvider
     ): Promise<RepositoryMetadata | undefined> {
         let metadata = this.metadata.get(repository)
         if (metadata) return metadata
-        const response = await graphqlQuery<RevisionParameters, RevisionResult>(
-            RevisionQuery,
+        metadata = await revisionQuery(
             {
                 repository: repository,
             },
             token || emptyCancelationToken()
         )
-        metadata = {
-            id: response?.data?.repositoryRedirect?.id,
-            defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
-            defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
-            defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
-        }
         this.metadata.set(repository, metadata)
         return metadata
     }
@@ -508,6 +501,19 @@ export class BrowseFileSystemProvider
 
 function parseUri(uri: string): ParsedRepoURI {
     return parseBrowserRepoURL(new URL(uri.replace('sourcegraph://', 'https://')))
+}
+
+export async function revisionQuery(
+    parameters: RevisionParameters,
+    token: vscode.CancellationToken
+): Promise<RepositoryMetadata> {
+    const response = await graphqlQuery<RevisionParameters, RevisionResult>(RevisionQuery, parameters, token)
+    return {
+        id: response?.data?.repositoryRedirect?.id,
+        defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
+        defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
+        defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
+    }
 }
 
 interface RevisionParameters {
