@@ -1,8 +1,7 @@
 import assert from 'assert'
-import { URL } from 'url'
 import { FileTree } from './FileTree'
-import { parseBrowserRepoURL } from './parseRepoUrl'
-const tree = new FileTree(parseBrowserRepoURL(new URL('https://sourcegraph.com/sourcegraph-vscode@v8')), [
+import { SourcegraphUri } from './parseRepoUrl'
+const tree = new FileTree(SourcegraphUri.parse('https://sourcegraph.com/sourcegraph-vscode@v8'), [
     '.eslintrc.json',
     '.github/workflows/build.yml',
     '.gitignore',
@@ -36,7 +35,7 @@ function checkChildren(directory: string, expected: string[]) {
         const childUris = tree.directChildren(directory)
         const obtained: string[] = []
         for (const uri of childUris) {
-            const parsed = parseBrowserRepoURL(new URL(uri))
+            const parsed = SourcegraphUri.parse(uri)
             if (parsed.path) {
                 const path = uri.includes('/tree/') ? parsed.path + `/` : parsed.path
                 obtained.push(path)

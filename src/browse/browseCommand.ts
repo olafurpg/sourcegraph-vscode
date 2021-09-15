@@ -1,9 +1,8 @@
-import { URL } from 'url'
 import * as vscode from 'vscode'
 import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
-import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
+import { SourcegraphUri } from './parseRepoUrl'
 import { SourcegraphCompletionItemProvider } from '../notebook/SourcegraphCompletionItemProvider'
 import { SourcegraphNotebookSerializer } from '../notebook/SourcegraphNotebookSerializer'
 import { SourcegraphSemanticTokenProvider } from '../highlighting/SourcegraphSemanticTokenProvider'
@@ -61,7 +60,7 @@ async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
 
 export async function openFileCommand(uri: vscode.Uri): Promise<void> {
     const textDocument = await vscode.workspace.openTextDocument(uri)
-    const parsed = parseBrowserRepoURL(new URL(uri.toString(true).replace('sourcegraph://', 'https://')))
+    const parsed = SourcegraphUri.parse(uri.toString(true))
     const selection = getSelection(parsed, textDocument)
     log.appendLine(`SELECTION OPEN ${JSON.stringify(parsed.position)}`)
     await vscode.window.showTextDocument(textDocument, {
@@ -75,7 +74,7 @@ function offsetRange(line: number, character: number): vscode.Range {
     return new vscode.Range(position, position)
 }
 
-function getSelection(parsed: ParsedRepoURI, textDocument: vscode.TextDocument): vscode.Range | undefined {
+function getSelection(parsed: SourcegraphUri, textDocument: vscode.TextDocument): vscode.Range | undefined {
     if (typeof parsed?.position?.line !== 'undefined' && typeof parsed?.position?.character !== 'undefined') {
         return offsetRange(parsed.position.line - 1, parsed.position.character)
     }

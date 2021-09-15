@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent } from './parseRepoUrl'
+import { SourcegraphUri } from './parseRepoUrl'
 import { search } from '../queries/graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
@@ -54,7 +53,7 @@ export class BrowseFileSystemProvider
         const promises: RepositoryFile[] = []
         for (const [repository, downloadingFileNames] of this.files.entries()) {
             const fileNames = await downloadingFileNames
-            const parsed = parseUri(repository)
+            const parsed = SourcegraphUri.parse(repository)
             promises.push({
                 repositoryUri: repository,
                 repositoryLabel: `${parsed.repository}${parsed.revisionString()}`,
@@ -72,7 +71,7 @@ export class BrowseFileSystemProvider
     private async didFocusString(uri: string, isDestinationNode: boolean): Promise<void> {
         try {
             if (this.treeView) {
-                const parent = repoUriParent(uri)
+                const parent = SourcegraphUri.parse(uri).parent()
                 if (parent && !this.isExpandedNode.has(parent)) {
                     await this.didFocusString(parent, false)
                 }
@@ -87,7 +86,7 @@ export class BrowseFileSystemProvider
             log.appendLine(`ERROR: didFocusString(${uri}) error=${error}`)
         }
     }
-    private async treeItemLabel(parsed: ParsedRepoURI): Promise<string> {
+    private async treeItemLabel(parsed: SourcegraphUri): Promise<string> {
         if (parsed.path) {
             return this.filename(parsed.path)
         }
@@ -105,7 +104,7 @@ export class BrowseFileSystemProvider
     public async getTreeItem(uri: string): Promise<vscode.TreeItem> {
         try {
             // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
-            const parsed = parseUri(uri)
+            const parsed = SourcegraphUri.parse(uri)
             const label = await this.treeItemLabel(parsed)
             const isFile = uri.includes('/-/blob/')
             const isDirectory = !isFile
@@ -131,9 +130,9 @@ export class BrowseFileSystemProvider
         }
     }
     private async getCollapsibleState(uri: string, isDirectory: boolean): Promise<vscode.TreeItemCollapsibleState> {
-        const parent = repoUriParent(uri)
+        const parent = SourcegraphUri.parse(uri).parent()
         if (isDirectory && parent) {
-            const parsedParent = parseUri(parent)
+            const parsedParent = SourcegraphUri.parse(parent)
             if (parsedParent.path) {
                 const tree = await this.getFileTree(parsedParent)
                 const directChildren = tree?.directChildren(parsedParent.path)
@@ -144,7 +143,7 @@ export class BrowseFileSystemProvider
         }
         return isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     }
-    private async getFileTree(parsed: ParsedRepoURI): Promise<FileTree | undefined> {
+    private async getFileTree(parsed: SourcegraphUri): Promise<FileTree | undefined> {
         if (!parsed.revision) {
             parsed.revision = this.metadata.get(parsed.repository)?.defaultBranch
         }
@@ -170,7 +169,7 @@ export class BrowseFileSystemProvider
                 const repos = [...this.repos]
                 return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
             }
-            const parsed = parseUri(uri)
+            const parsed = SourcegraphUri.parse(uri)
             if (typeof parsed.path === 'undefined') {
                 parsed.path = ''
             }
@@ -184,7 +183,7 @@ export class BrowseFileSystemProvider
         }
     }
     public getParent(uri: string): string | undefined {
-        return repoUriParent(uri)
+        return SourcegraphUri.parse(uri).parent()
     }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
@@ -197,7 +196,7 @@ export class BrowseFileSystemProvider
     ): Promise<vscode.Location[]> {
         const repos = [...this.repos]
             .map(repo => {
-                const parsed = parseUri(repo)
+                const parsed = SourcegraphUri.parse(repo)
                 const revision = parsed.revision ? `@${parsed.revision}` : ''
                 return `repo:^${parsed.repository}$${revision}`
             })
@@ -326,7 +325,7 @@ export class BrowseFileSystemProvider
         //     log.appendLine(`ERROR readDirectory.fetchBlob(${uri.toString(true)})`)
         // }
 
-        const parsed = parseUri(uri.toString(true))
+        const parsed = SourcegraphUri.parse(uri.toString(true))
         log.appendLine(`READ_DIRECTORY parsed.path=${parsed.path}`)
         if (typeof parsed.path === 'undefined') {
             parsed.path = ''
@@ -374,7 +373,7 @@ export class BrowseFileSystemProvider
             throw new Error(`ERROR defaultFileUri no revision ${repository}`)
         }
         const uri = `sourcegraph://sourcegraph.com/${repository}@${revision}`
-        const files = await this.downloadFiles(parseUri(uri), revision)
+        const files = await this.downloadFiles(SourcegraphUri.parse(uri), revision)
         const readmes = files.filter(name => name.match(/readme/i))
         const candidates = readmes.length > 0 ? readmes : files
         let readme: string | undefined
@@ -399,8 +398,7 @@ export class BrowseFileSystemProvider
         if (result) {
             return result
         }
-        const url = new URL(uri.replace('sourcegraph://', 'https://'))
-        const parsed = parseBrowserRepoURL(url)
+        const parsed = SourcegraphUri.parse(uri)
         await this.repositoryMetadata(parsed.repository)
         const token = new vscode.CancellationTokenSource()
         if (!parsed.revision) {
@@ -440,7 +438,7 @@ export class BrowseFileSystemProvider
     }
 
     private updateCache(blob: Blob) {
-        const repo = parseUri(blob.uri).repositoryString()
+        const repo = SourcegraphUri.parse(blob.uri).repositoryString()
         this.cache.set(blob.uri, blob)
         const isNew = !this.repos.has(repo)
         if (isNew) {
@@ -471,7 +469,7 @@ export class BrowseFileSystemProvider
         return metadata
     }
 
-    downloadFiles(parsed: ParsedRepoURI, revision: string): Promise<string[]> {
+    downloadFiles(parsed: SourcegraphUri, revision: string): Promise<string[]> {
         const key = parsed.repositoryString()
         let downloadingFiles = this.files.get(key)
         if (!downloadingFiles) {
@@ -483,10 +481,6 @@ export class BrowseFileSystemProvider
         }
         return downloadingFiles
     }
-}
-
-function parseUri(uri: string): ParsedRepoURI {
-    return parseBrowserRepoURL(new URL(uri.replace('sourcegraph://', 'https://')))
 }
 
 interface Blob {

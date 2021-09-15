@@ -1,9 +1,8 @@
-import { URL } from 'url'
 import * as vscode from 'vscode'
 import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
-import { repositoriesQuery } from './repositoriesQuery'
-import { parseBrowserRepoUri, parseBrowserRepoURL, repoUriRepository } from './parseRepoUrl'
+import { repositoriesQuery } from '../queries/repositoriesQuery'
+import { SourcegraphUri } from './parseRepoUrl'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
@@ -11,7 +10,7 @@ interface BrowseQuickPickItem extends vscode.QuickPickItem {
 }
 
 function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
-    const parsed = parseBrowserRepoURL(new URL(value))
+    const parsed = SourcegraphUri.parse(value)
     if (parsed.path) {
         const revision = parsed.revision ? `@${parsed.revision}` : ''
         return {
@@ -120,17 +119,17 @@ export class BrowseQuickPick {
                     if (selection) {
                         if (selection.repo) {
                             const originalUri = selection.uri
-                            if (!selection.uri || !parseBrowserRepoUri(selection.uri).path) {
+                            if (!selection.uri || !SourcegraphUri.parse(selection.uri).path) {
                                 selection.uri = await fs.defaultFileUri(selection.repo)
                             }
-                            const parsed = parseBrowserRepoUri(selection.uri)
+                            const parsed = SourcegraphUri.parse(selection.uri)
                             log.appendLine(
                                 `SELECT original=${originalUri} uri=${selection.uri} parsed.revision=${parsed.revision}`
                             )
                             if (!parsed.revision) {
                                 const metadata = await fs.repositoryMetadata(parsed.repository)
                                 parsed.revision = metadata?.defaultBranch || 'HEAD'
-                                selection.uri = `${repoUriRepository(parsed)}/-/blob/${parsed.path}`
+                                selection.uri = `${parsed.repositoryString()}/-/blob/${parsed.path}`
                             }
                         }
                         this.addRecentlyBrowsedFile(selection.uri)

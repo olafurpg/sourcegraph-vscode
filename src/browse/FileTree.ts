@@ -1,10 +1,10 @@
-import { ParsedRepoURI } from './parseRepoUrl'
+import { SourcegraphUri } from './parseRepoUrl'
 
 /**
  * Helper class to represent a flat list of relative file paths (type `string[]`) as a hierarchical file tree.
  */
 export class FileTree {
-    constructor(readonly uri: ParsedRepoURI, readonly files: string[]) {
+    constructor(readonly uri: SourcegraphUri, readonly files: string[]) {
         files.sort()
     }
     public toString(): string {

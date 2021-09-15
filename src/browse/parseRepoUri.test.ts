@@ -1,20 +1,18 @@
-import { URL } from 'url'
 import assert from 'assert'
-import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent } from './parseRepoUrl'
+import { SourcegraphUri } from './parseRepoUrl'
 
-function check(input: string, expected: Omit<ParsedRepoURI, 'url'>) {
+function check(input: string, expected: { repository: string; revision: string; path: string }) {
     it(`parseBrowserRepoURL('${input})'`, () => {
-        const obtained = parseBrowserRepoURL(new URL(input))
-        assert.deepStrictEqual(obtained, {
-            url: new URL(input),
-            ...expected,
-        })
+        const obtained = SourcegraphUri.parse(input)
+        assert.deepStrictEqual(obtained.repository, expected.repository)
+        assert.deepStrictEqual(obtained.revision, expected.revision)
+        assert.deepStrictEqual(obtained.path, expected.path)
     })
 }
 
 function checkParent(input: string, expected: string | undefined) {
     it(`checkParent('${input}')`, () => {
-        const obtained = repoUriParent(input)
+        const obtained = SourcegraphUri.parse(input).parent()
         assert.deepStrictEqual(obtained, expected)
     })
 }
@@ -22,13 +20,8 @@ function checkParent(input: string, expected: string | undefined) {
 describe('parseRepoUri', () => {
     check('https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java', {
         repository: 'jdk',
-        rawRevision: 'v8',
         revision: 'v8',
-        commitRange: undefined,
-        commitID: undefined,
         path: 'java/lang/String.java',
-        position: undefined,
-        range: undefined,
     })
     checkParent(
         'https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java',

@@ -2,8 +2,9 @@ import { URL, URLSearchParams } from 'url'
 import { Position } from '../queries/Position'
 import { Range } from '../queries/Range'
 
-export class ParsedRepoURI {
+export class SourcegraphUri {
     constructor(
+        public readonly uri: string,
         public readonly url: URL,
         public readonly repository: string,
         public revision: string | undefined,
@@ -14,91 +15,96 @@ export class ParsedRepoURI {
         public readonly position: Position | undefined,
         public readonly range: Range | undefined
     ) {}
+    public static parse(uri: string): SourcegraphUri {
+        uri = uri.replace('https://', 'sourcegraph://')
+        const url = new URL(uri.replace('sourcegraph://', 'https://'))
+        let pathname = url.pathname.slice(1) // trim leading '/'
+        if (pathname.endsWith('/')) {
+            pathname = pathname.slice(0, -1) // trim trailing '/'
+        }
+
+        const indexOfSeparator = pathname.indexOf('/-/')
+
+        // examples:
+        // - 'github.com/gorilla/mux'
+        // - 'github.com/gorilla/mux@revision'
+        // - 'foo/bar' (from 'sourcegraph.mycompany.com/foo/bar')
+        // - 'foo/bar@revision' (from 'sourcegraph.mycompany.com/foo/bar@revision')
+        // - 'foobar' (from 'sourcegraph.mycompany.com/foobar')
+        // - 'foobar@revision' (from 'sourcegraph.mycompany.com/foobar@revision')
+        let repoRevision: string
+        if (indexOfSeparator === -1) {
+            repoRevision = pathname // the whole string
+        } else {
+            repoRevision = pathname.slice(0, indexOfSeparator) // the whole string leading up to the separator (allows revision to be multiple path parts)
+        }
+        const { repository, revision, rawRevision } = parseRepoRevision(repoRevision)
+        const commitID = revision && /^[\da-f]{40}$/i.test(revision) ? revision : undefined
+
+        let path: string | undefined
+        let commitRange: string | undefined
+        const treeSeparator = pathname.indexOf('/-/tree/')
+        const blobSeparator = pathname.indexOf('/-/blob/')
+        const comparisonSeparator = pathname.indexOf('/-/compare/')
+        if (treeSeparator !== -1) {
+            path = decodeURIComponent(pathname.slice(treeSeparator + '/-/tree/'.length))
+        }
+        if (blobSeparator !== -1) {
+            path = decodeURIComponent(pathname.slice(blobSeparator + '/-/blob/'.length))
+        }
+        if (comparisonSeparator !== -1) {
+            commitRange = pathname.slice(comparisonSeparator + '/-/compare/'.length)
+        }
+        let position: Position | undefined
+        let range: Range | undefined
+
+        const parsedHash = parseQueryAndHash(url.search, url.hash)
+        if (parsedHash.line) {
+            position = {
+                line: parsedHash.line,
+                character: parsedHash.character || 0,
+            }
+            if (parsedHash.endLine) {
+                range = {
+                    start: position,
+                    end: {
+                        line: parsedHash.endLine,
+                        character: parsedHash.endCharacter || 0,
+                    },
+                }
+            }
+        }
+        return new SourcegraphUri(
+            uri,
+            url,
+            repository,
+            revision,
+            rawRevision,
+            commitID,
+            path,
+            commitRange,
+            position,
+            range
+        )
+    }
     public repositoryString(): string {
         return `sourcegraph://${this.url.host}/${this.repository}${this.revisionString()}`
     }
     public revisionString(): string {
         return this.revision ? `@${this.revision}` : ''
     }
-}
-
-export function repoUriParent(uri: string): string | undefined {
-    const parsed = parseBrowserRepoURL(new URL(uri))
-    if (typeof parsed.path === 'string') {
-        console.log(parsed.path)
-        const slash = uri.lastIndexOf('/')
-        if (slash < 0 || !parsed.path.includes('/')) {
-            const revision = parsed.revision ? `@${parsed.revision}` : ''
-            return `${parsed.url.protocol}//${parsed.url.host}/${parsed.repository}${revision}`
-        }
-        const parent = uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
-        return parent
-    }
-    return undefined
-}
-
-export function parseBrowserRepoUri(uri: string): ParsedRepoURI {
-    return parseBrowserRepoURL(new URL(uri.replace('sourcegraph://', 'https://')))
-}
-
-export function parseBrowserRepoURL(url: URL): ParsedRepoURI {
-    let pathname = url.pathname.slice(1) // trim leading '/'
-    if (pathname.endsWith('/')) {
-        pathname = pathname.slice(0, -1) // trim trailing '/'
-    }
-
-    const indexOfSeparator = pathname.indexOf('/-/')
-
-    // examples:
-    // - 'github.com/gorilla/mux'
-    // - 'github.com/gorilla/mux@revision'
-    // - 'foo/bar' (from 'sourcegraph.mycompany.com/foo/bar')
-    // - 'foo/bar@revision' (from 'sourcegraph.mycompany.com/foo/bar@revision')
-    // - 'foobar' (from 'sourcegraph.mycompany.com/foobar')
-    // - 'foobar@revision' (from 'sourcegraph.mycompany.com/foobar@revision')
-    let repoRevision: string
-    if (indexOfSeparator === -1) {
-        repoRevision = pathname // the whole string
-    } else {
-        repoRevision = pathname.slice(0, indexOfSeparator) // the whole string leading up to the separator (allows revision to be multiple path parts)
-    }
-    const { repository, revision, rawRevision } = parseRepoRevision(repoRevision)
-    const commitID = revision && /^[\da-f]{40}$/i.test(revision) ? revision : undefined
-
-    let path: string | undefined
-    let commitRange: string | undefined
-    const treeSeparator = pathname.indexOf('/-/tree/')
-    const blobSeparator = pathname.indexOf('/-/blob/')
-    const comparisonSeparator = pathname.indexOf('/-/compare/')
-    if (treeSeparator !== -1) {
-        path = decodeURIComponent(pathname.slice(treeSeparator + '/-/tree/'.length))
-    }
-    if (blobSeparator !== -1) {
-        path = decodeURIComponent(pathname.slice(blobSeparator + '/-/blob/'.length))
-    }
-    if (comparisonSeparator !== -1) {
-        commitRange = pathname.slice(comparisonSeparator + '/-/compare/'.length)
-    }
-    let position: Position | undefined
-    let range: Range | undefined
-
-    const parsedHash = parseQueryAndHash(url.search, url.hash)
-    if (parsedHash.line) {
-        position = {
-            line: parsedHash.line,
-            character: parsedHash.character || 0,
-        }
-        if (parsedHash.endLine) {
-            range = {
-                start: position,
-                end: {
-                    line: parsedHash.endLine,
-                    character: parsedHash.endCharacter || 0,
-                },
+    public parent(): string | undefined {
+        if (typeof this.path === 'string') {
+            const slash = this.uri.lastIndexOf('/')
+            if (slash < 0 || !this.path.includes('/')) {
+                const revision = this.revision ? `@${this.revision}` : ''
+                return `${this.url.protocol}//${this.url.host}/${this.repository}${revision}`
             }
+            const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
+            return parent
         }
+        return undefined
     }
-    return new ParsedRepoURI(url, repository, revision, rawRevision, commitID, path, commitRange, position, range)
 }
 
 type LineOrPositionOrRange =
