@@ -1,11 +1,6 @@
 import { URL, URLSearchParams } from 'url'
-
-class Position {
-    constructor(public readonly line: number, public readonly character: number) {}
-}
-class Range {
-    constructor(public readonly start: Position, public readonly end: Position) {}
-}
+import { Position } from '../queries/Position'
+import { Range } from '../queries/Range'
 
 export interface ParsedRepoURI {
     url: URL

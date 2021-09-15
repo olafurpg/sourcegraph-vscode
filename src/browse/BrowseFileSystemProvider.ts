@@ -10,11 +10,11 @@ import { SearchPatternType } from '../highlighting/scanner'
 import { filesQuery } from '../queries/filesQuery'
 import { definitionQuery } from '../queries/definitionQuery'
 import { LocationNode } from '../queries/LocationNode'
-import { repositoryMetadataQuery, RepositoryMetadata } from './repositoryMetadataQuery'
+import { repositoryMetadataQuery, RepositoryMetadata } from '../queries/repositoryMetadataQuery'
 import { RepositoryFile } from './RepositoryFile'
 import { contentQuery } from './contentQuery'
-import { hoverQuery } from './hoverQuery'
-import { referencesQuery } from './referencesQuery'
+import { hoverQuery } from '../queries/hoverQuery'
+import { referencesQuery } from '../queries/referencesQuery'
 
 export class BrowseFileSystemProvider
     implements

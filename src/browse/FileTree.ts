@@ -1,5 +1,8 @@
 import { ParsedRepoURI } from './parseRepoUrl'
 
+/**
+ * Helper class to represent a flat list of relative file paths (type `string[]`) as a hierarchical file tree.
+ */
 export class FileTree {
     constructor(readonly uri: ParsedRepoURI, readonly files: string[]) {
         files.sort()
@@ -11,6 +14,11 @@ export class FileTree {
     // TODO: optimize this for very large repos like chromium/chromium. It's
     // usable in its current state but could be much faster if we use binary
     // search to skip unrelated paths.
+    /**
+     * Re
+     * @param directory
+     * @returns
+     */
     public directChildren(directory: string): string[] {
         const depth = this.depth(directory)
         const directFiles = new Set<string>()
