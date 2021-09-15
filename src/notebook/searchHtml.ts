@@ -8,7 +8,7 @@ export async function searchHtml(
     patternType: SearchPatternType,
     token: vscode.CancellationToken
 ): Promise<string> {
-    const result = await searchQueryResult(host, query, patternType, token)
+    const result = await searchQueryResult(query, patternType, token)
     const html: string[] = []
     const nodes = result?.data?.search?.results?.results
     for (const node of nodes || []) {

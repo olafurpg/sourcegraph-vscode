@@ -2,7 +2,11 @@ import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
 import { log } from '../log'
 
-export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
+export default function graphqlQuery<A, B>(
+    query: string,
+    variables: A,
+    token: CancellationToken
+): Promise<B | undefined> {
     return new Promise<B | undefined>((resolve, reject) => {
         const stdoutBuffer: string[] = []
         const onExit = (exit: number) => {

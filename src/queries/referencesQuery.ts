@@ -1,9 +1,9 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from '../queries/graphqlQuery'
-import { PositionParameters } from '../queries/PositionParameters'
-import { LocationNode } from '../queries/LocationNode'
+import graphqlQuery from '../queries/graphqlQuery'
+import PositionParameters from '../queries/PositionParameters'
+import LocationNode from '../queries/LocationNode'
 
-export async function referencesQuery(
+export default async function referencesQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<LocationNode[]> {

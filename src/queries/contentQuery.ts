@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from './graphqlQuery'
+import graphqlQuery from './graphqlQuery'
 
-export async function contentQuery(
+export default async function contentQuery(
     parameters: ContentParameters,
     token: vscode.CancellationToken
 ): Promise<string | undefined> {

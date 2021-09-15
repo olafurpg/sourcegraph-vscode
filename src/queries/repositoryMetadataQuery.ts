@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from '../queries/graphqlQuery'
+import graphqlQuery from '../queries/graphqlQuery'
 
 export interface RepositoryMetadata {
     defaultOid?: string
@@ -9,7 +9,7 @@ export interface RepositoryMetadata {
     commitToReferenceName?: Map<string, string>
 }
 
-export async function repositoryMetadataQuery(
+export default async function repositoryMetadataQuery(
     parameters: RevisionParameters,
     token: vscode.CancellationToken
 ): Promise<RepositoryMetadata> {

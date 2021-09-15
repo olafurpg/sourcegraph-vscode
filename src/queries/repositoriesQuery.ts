@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from '../queries/graphqlQuery'
+import graphqlQuery from '../queries/graphqlQuery'
 
-export async function repositoriesQuery(query: string, token: vscode.CancellationToken): Promise<string[]> {
+export default async function repositoriesQuery(query: string, token: vscode.CancellationToken): Promise<string[]> {
     const result = await graphqlQuery<RepositoryParameters, RepositoryResult>(
         RepositoryQuery,
         {
@@ -13,7 +13,7 @@ export async function repositoriesQuery(query: string, token: vscode.Cancellatio
     return result?.data?.repositories?.nodes?.filter(node => !node.isFork).map(node => node.name) || []
 }
 
-export const RepositoryQuery = `
+const RepositoryQuery = `
 query RepositoriesForPopover($query: String, $first: Int) {
   repositories(first: $first, query: $query) {
     nodes {

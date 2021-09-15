@@ -1,7 +1,10 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from './graphqlQuery'
+import graphqlQuery from './graphqlQuery'
 
-export async function filesQuery(parameters: FilesParameters, token: vscode.CancellationToken): Promise<string[]> {
+export default async function filesQuery(
+    parameters: FilesParameters,
+    token: vscode.CancellationToken
+): Promise<string[]> {
     const result = await graphqlQuery<FilesParameters, FilesResult>(
         FilesQuery,
         parameters,

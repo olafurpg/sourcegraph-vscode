@@ -1,4 +1,4 @@
-export interface PositionParameters {
+export default interface PositionParameters {
     repository: string
     revision: string
     path: string

@@ -1,8 +1,8 @@
 import * as vscode from 'vscode'
-import { graphqlQuery } from './graphqlQuery'
-import { PositionParameters } from './PositionParameters'
+import graphqlQuery from './graphqlQuery'
+import PositionParameters from './PositionParameters'
 
-export async function hoverQuery(
+export default async function hoverQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<string | undefined> {

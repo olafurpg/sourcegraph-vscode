@@ -1,9 +1,9 @@
-import { PositionParameters } from './PositionParameters'
+import PositionParameters from './PositionParameters'
 import * as vscode from 'vscode'
-import { graphqlQuery } from './graphqlQuery'
-import { LocationNode } from './LocationNode'
+import graphqlQuery from './graphqlQuery'
+import LocationNode from './LocationNode'
 
-export async function definitionQuery(
+export default async function definitionQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<LocationNode[]> {

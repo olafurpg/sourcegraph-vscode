@@ -1,9 +1,8 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from '../highlighting/scanner'
-import { graphqlQuery } from './graphqlQuery'
+import graphqlQuery from './graphqlQuery'
 
 export function searchQueryResult(
-    host: string,
     query: string,
     patternType: SearchPatternType,
     token: vscode.CancellationToken
@@ -48,7 +47,7 @@ export async function searchQuery(
     patternType: SearchPatternType,
     token: vscode.CancellationToken
 ): Promise<vscode.Location[]> {
-    const result = await searchQueryResult(host, query, patternType, token)
+    const result = await searchQueryResult(query, patternType, token)
     const results: vscode.Location[] = []
     const nodes = result?.data?.search?.results?.results
     for (const node of nodes || []) {
