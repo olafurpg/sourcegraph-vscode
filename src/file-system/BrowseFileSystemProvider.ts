@@ -10,6 +10,8 @@ import { SearchPatternType } from '../highlighting/scanner'
 import { filesQuery } from '../queries/filesQuery'
 import { PositionParameters } from '../queries/PositionParameters'
 import { Range } from '../queries/Range'
+import { definitionQuery } from '../queries/definitionQuery'
+import { LocationNode } from '../queries/LocationNode'
 
 export interface RepositoryFile {
     repositoryUri: string
@@ -581,77 +583,6 @@ query Content($repository: String!, $revision: String!, $path: String!) {
     }
   }
 }`
-
-export async function definitionQuery(
-    parameters: PositionParameters,
-    token: vscode.CancellationToken
-): Promise<LocationNode[]> {
-    const definition = await graphqlQuery<DefinitionParameters, DefinitionResult>(DefinitionQuery, parameters, token)
-    return definition?.data?.repository?.commit?.blob?.lsif?.definitions?.nodes || []
-}
-type DefinitionParameters = PositionParameters
-interface DefinitionResult {
-    data: {
-        repository: {
-            commit: {
-                blob: {
-                    lsif: {
-                        definitions: {
-                            nodes: LocationNode[]
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-interface LocationNode {
-    resource: {
-        path: string
-        repository: {
-            name: string
-        }
-        commit: {
-            oid: string
-        }
-    }
-    range: Range
-}
-export const DefinitionQuery = `
-query Definition($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        lsif {
-          definitions(line: $line, character: $character) {
-            nodes {
-              resource {
-                path
-                repository {
-                  name
-                }
-                commit {
-                  oid
-                }
-              }
-              range {
-                start {
-                  line
-                  character
-                }
-                end {
-                  line
-                  character
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-`
 
 interface HoverResult {
     data: {
