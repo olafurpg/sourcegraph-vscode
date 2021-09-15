@@ -1,4 +1,4 @@
-import { SourcegraphUri } from './parseRepoUrl'
+import { SourcegraphUri } from './SourcegraphUri'
 
 /**
  * Helper class to represent a flat list of relative file paths (type `string[]`) as a hierarchical file tree.

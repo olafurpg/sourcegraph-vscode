@@ -1,9 +1,8 @@
 import { URL, URLSearchParams } from 'url'
-import { Position } from '../queries/Position'
-import { Range } from '../queries/Range'
+import { Position, Range } from '../queries/Range'
 
 export class SourcegraphUri {
-    constructor(
+    private constructor(
         public readonly uri: string,
         public readonly url: URL,
         public readonly repository: string,
@@ -107,6 +106,16 @@ export class SourcegraphUri {
     }
 }
 
+// NOTE: The code below is copy-pasted from the sourcegraph/sourcegraph repository
+// https://sourcegraph.com/github.com/sourcegraph/sourcegraph@56dfaaa3e3172f9afd4a29a4780a7f1a34198238/-/blob/client/shared/src/util/url.ts?L287
+
+/**
+ * Represents a line, a position, a line range, or a position range. It forbids
+ * just a character, or a range from a line to a position or vice versa (such as
+ * "L1-2:3" or "L1:2-3"), none of which would make much sense.
+ *
+ * 1-indexed.
+ */
 type LineOrPositionOrRange =
     | { line?: undefined; character?: undefined; endLine?: undefined; endCharacter?: undefined }
     | { line: number; character?: number; endLine?: undefined; endCharacter?: undefined }

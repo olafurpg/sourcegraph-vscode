@@ -2,7 +2,7 @@ import open from 'open'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
-import { activateBrowseCommand } from './browse/browseCommand'
+import { activateBrowseCommand } from './commands/browseCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')

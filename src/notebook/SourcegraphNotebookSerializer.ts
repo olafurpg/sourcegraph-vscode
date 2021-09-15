@@ -1,7 +1,7 @@
 import { TextDecoder, TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { log } from '../log'
-import { openFileCommand } from '../browse/browseCommand'
+import { openFileCommand } from '../commands/browseCommand'
 import { searchHtml } from './searchHtml'
 import { SearchPatternType } from '../highlighting/scanner'
 import { MarkdownFile, MarkdownPart, MarkdownPartKind } from './MarkdownFile'

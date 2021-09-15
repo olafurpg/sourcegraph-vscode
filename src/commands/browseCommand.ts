@@ -1,14 +1,14 @@
 import * as vscode from 'vscode'
 import { log } from '../log'
-import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
-import { SourcegraphUri } from './parseRepoUrl'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
 import { SourcegraphCompletionItemProvider } from '../notebook/SourcegraphCompletionItemProvider'
 import { SourcegraphNotebookSerializer } from '../notebook/SourcegraphNotebookSerializer'
 import { SourcegraphSemanticTokenProvider } from '../highlighting/SourcegraphSemanticTokenProvider'
 
 export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
-    const fs = new BrowseFileSystemProvider()
+    const fs = new SourcegraphFileSystemProvider()
     vscode.workspace.registerFileSystemProvider('sourcegraph', fs, { isReadonly: true })
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
@@ -36,7 +36,6 @@ export async function activateBrowseCommand(context: vscode.ExtensionContext): P
     vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
     fs.didFocus(vscode.window.activeTextEditor?.document.uri)
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
-    // const controller = vscode.notebooks.createNotebookController('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
 }
 
 async function searchInEditor(tokens: SourcegraphSemanticTokenProvider): Promise<void> {
@@ -48,7 +47,7 @@ async function searchInEditor(tokens: SourcegraphSemanticTokenProvider): Promise
     }
 }
 
-async function browseCommand(fs: BrowseFileSystemProvider): Promise<void> {
+async function browseCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {
         const uri = await new BrowseQuickPick().getBrowseUri(fs)
         log.appendLine(`QUICK_PICK_RESULT ${uri}`)

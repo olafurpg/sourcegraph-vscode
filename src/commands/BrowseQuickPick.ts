@@ -1,8 +1,8 @@
 import * as vscode from 'vscode'
 import { log } from '../log'
-import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import { repositoriesQuery } from '../queries/repositoriesQuery'
-import { SourcegraphUri } from './parseRepoUrl'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
@@ -39,7 +39,7 @@ export class BrowseQuickPick {
         }
     }
 
-    public async getBrowseUri(fs: BrowseFileSystemProvider): Promise<string> {
+    public async getBrowseUri(fs: SourcegraphFileSystemProvider): Promise<string> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             const pick = vscode.window.createQuickPick<BrowseQuickPickItem>()

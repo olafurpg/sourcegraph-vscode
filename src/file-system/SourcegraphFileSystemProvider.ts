@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { SourcegraphUri } from './parseRepoUrl'
+import { SourcegraphUri } from './SourcegraphUri'
 import { search } from '../queries/graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
@@ -10,12 +10,11 @@ import { filesQuery } from '../queries/filesQuery'
 import { definitionQuery } from '../queries/definitionQuery'
 import { LocationNode } from '../queries/LocationNode'
 import { repositoryMetadataQuery, RepositoryMetadata } from '../queries/repositoryMetadataQuery'
-import { RepositoryFile } from './RepositoryFile'
-import { contentQuery } from './contentQuery'
+import { contentQuery } from '../queries/contentQuery'
 import { hoverQuery } from '../queries/hoverQuery'
 import { referencesQuery } from '../queries/referencesQuery'
 
-export class BrowseFileSystemProvider
+export class SourcegraphFileSystemProvider
     implements
         vscode.TreeDataProvider<string>,
         vscode.FileSystemProvider,
@@ -481,6 +480,12 @@ export class BrowseFileSystemProvider
         }
         return downloadingFiles
     }
+}
+
+export interface RepositoryFile {
+    repositoryUri: string
+    repositoryLabel: string
+    fileNames: string[]
 }
 
 interface Blob {
