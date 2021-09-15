@@ -152,7 +152,7 @@ export class SourcegraphFileSystemProvider
     }
     private async getFileTree(uri: SourcegraphUri): Promise<FileTree | undefined> {
         if (!uri.revision) {
-            uri.revision = this.metadata.get(uri.repository)?.defaultBranch
+            uri = uri.withRevision(this.metadata.get(uri.repository)?.defaultBranch)
         }
         const downloadingKey = uri.repositoryUri()
         const downloading = this.files.get(downloadingKey)
@@ -177,11 +177,8 @@ export class SourcegraphFileSystemProvider
                 return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
             }
             const uri = SourcegraphUri.parse(uriString)
-            if (typeof uri.path === 'undefined') {
-                uri.path = ''
-            }
             const tree = await this.getFileTree(uri)
-            const result = tree?.directChildren(uri.path)
+            const result = tree?.directChildren(uri.path || '')
             // log.appendLine(`getChildren(${uri}) path=${parsed.path} tree=${tree} result=${JSON.stringify(result)}`)
             return result
         } catch (error) {
@@ -330,14 +327,11 @@ export class SourcegraphFileSystemProvider
         const uri = sourcegraphUri(vscodeUri)
         if (uri.uri.endsWith('/-')) return Promise.resolve([])
         log.appendLine(`READ_DIRECTORY uri.path=${uri.path}`)
-        if (typeof uri.path === 'undefined') {
-            uri.path = ''
-        }
         const tree = await this.getFileTree(uri)
         if (!tree) {
             return []
         }
-        const children = tree.directChildren(uri.path)
+        const children = tree.directChildren(uri.path || '')
         return children.map(child => {
             const isDirectory = child.includes('/-/tree/')
             const type = isDirectory ? vscode.FileType.Directory : vscode.FileType.File
@@ -402,32 +396,28 @@ export class SourcegraphFileSystemProvider
         }
         await this.repositoryMetadata(uri.repository)
         const token = new vscode.CancellationTokenSource()
-        if (!uri.revision) {
-            uri.revision = (await this.repositoryMetadata(uri.repository, token.token))?.defaultBranch
+        const revision = uri.revision || (await this.repositoryMetadata(uri.repository, token.token))?.defaultBranch
+        if (!revision) {
+            throw new Error(`no uri.revision from uri ${uri.uri}`)
         }
-        if (!uri.revision) {
-            throw new Error(`no uri.revision from uri ${uri.toString()}`)
-        }
-        if (typeof uri.path === 'undefined') {
-            uri.path = ''
-        }
+        const path = uri.path || ''
         const content = await contentQuery(
             {
                 repository: uri.repository,
-                revision: uri.revision,
-                path: uri.path,
+                revision: revision,
+                path: path,
             },
             token.token
         )
-        this.downloadFiles(uri, uri.revision)
+        this.downloadFiles(uri, revision)
         if (content) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
                 uri: uri.uri,
                 repository: uri.repository,
-                revision: uri.revision,
+                revision: revision,
                 content: encoder.encode(content),
-                path: uri.path,
+                path: path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
             }

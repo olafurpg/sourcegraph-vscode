@@ -6,14 +6,23 @@ export class SourcegraphUri {
         public readonly uri: string,
         public readonly url: URL,
         public readonly repository: string,
-        public revision: string | undefined,
-        public path: string | undefined,
+        public readonly revision: string | undefined,
+        public readonly path: string | undefined,
         public readonly rawRevision: string | undefined,
         public readonly commitRange: string | undefined,
         public readonly commitID: string | undefined,
         public readonly position: Position | undefined,
         public readonly range: Range | undefined
     ) {}
+
+    public withRevision(newRevision: string | undefined): SourcegraphUri {
+        const newRevisionPath = newRevision ? `@${newRevision}` : ''
+        return SourcegraphUri.parse(`sourcegraph://${this.url.host}/${this.repository}@${newRevisionPath}/${this.path}`)
+    }
+    public withPath(newPath: string): SourcegraphUri {
+        return SourcegraphUri.parse(`${this.repositoryUri()}/${newPath}`)
+    }
+
     public static parse(uri: string): SourcegraphUri {
         uri = uri.replace('https://', 'sourcegraph://')
         const url = new URL(uri.replace('sourcegraph://', 'https://'))
@@ -86,6 +95,7 @@ export class SourcegraphUri {
             range
         )
     }
+
     public repositoryUri(): string {
         return `sourcegraph://${this.url.host}/${this.repository}${this.revisionPath()}`
     }

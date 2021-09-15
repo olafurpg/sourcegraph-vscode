@@ -114,8 +114,8 @@ class BrowseQuickPick {
                             const uri = SourcegraphUri.parse(selection.uri)
                             if (!uri.revision) {
                                 const metadata = await fs.repositoryMetadata(uri.repository)
-                                uri.revision = metadata?.defaultBranch || 'HEAD'
-                                selection.uri = `${uri.repositoryUri()}/-/blob/${uri.path}`
+                                const revision = metadata?.defaultBranch || 'HEAD'
+                                selection.uri = uri.withRevision(revision).uri
                             }
                         }
                         this.addRecentlyBrowsedFile(selection.uri)
