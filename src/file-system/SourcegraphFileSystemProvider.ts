@@ -28,8 +28,10 @@ export class SourcegraphFileSystemProvider
     private activeUri: vscode.Uri | undefined
     private files: Map<string, Promise<string[]>> = new Map()
     private metadata: Map<string, RepositoryMetadata> = new Map()
+
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
     private readonly repoEmitter = new vscode.EventEmitter<string>()
+
     public onNewRepo = this.repoEmitter.event
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.uriEmitter.event
     public setTreeView(treeView: vscode.TreeView<string>): void {
@@ -48,14 +50,15 @@ export class SourcegraphFileSystemProvider
             this.isExpandedNode.delete(event.element)
         })
     }
+
     public async allFileFromOpenRepositories(): Promise<RepositoryFile[]> {
         const promises: RepositoryFile[] = []
         for (const [repository, downloadingFileNames] of this.files.entries()) {
             const fileNames = await downloadingFileNames
-            const parsed = SourcegraphUri.parse(repository)
+            const uri = SourcegraphUri.parse(repository)
             promises.push({
                 repositoryUri: repository,
-                repositoryLabel: `${parsed.repository}${parsed.revisionString()}`,
+                repositoryLabel: `${uri.repository}${uri.revisionString()}`,
                 fileNames,
             })
         }
@@ -64,18 +67,18 @@ export class SourcegraphFileSystemProvider
     public async didFocus(uri: vscode.Uri | undefined): Promise<void> {
         this.activeUri = uri
         if (uri && uri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
-            await this.didFocusString(uri.toString(true), true)
+            await this.didFocusString(sourcegraphUri(uri), true)
         }
     }
-    private async didFocusString(uri: string, isDestinationNode: boolean): Promise<void> {
+    private async didFocusString(uri: SourcegraphUri, isDestinationNode: boolean): Promise<void> {
         try {
             if (this.treeView) {
-                const parent = SourcegraphUri.parse(uri).parent()
+                const parent = uri.parent()
                 if (parent && !this.isExpandedNode.has(parent)) {
-                    await this.didFocusString(parent, false)
+                    await this.didFocusString(SourcegraphUri.parse(parent), false)
                 }
                 // log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
-                await this.treeView.reveal(uri, {
+                await this.treeView.reveal(uri.uri, {
                     focus: true,
                     select: isDestinationNode,
                     expand: !isDestinationNode,
@@ -85,27 +88,27 @@ export class SourcegraphFileSystemProvider
             log.appendLine(`ERROR: didFocusString(${uri}) error=${error}`)
         }
     }
-    private async treeItemLabel(parsed: SourcegraphUri): Promise<string> {
-        if (parsed.path) {
-            return this.filename(parsed.path)
+    private async treeItemLabel(uri: SourcegraphUri): Promise<string> {
+        if (uri.path) {
+            return this.filename(uri.path)
         }
-        const metadata = await this.repositoryMetadata(parsed.repository, emptyCancelationToken())
-        let revision = parsed.revision
+        const metadata = await this.repositoryMetadata(uri.repository, emptyCancelationToken())
+        let revision = uri.revision
         // log.appendLine(
-        //     `TREE_ITEM_LABEL ${parsed.revision} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
+        //     `TREE_ITEM_LABEL ${uri.revision} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
         // )
         if (metadata?.defaultBranch && (!revision || revision === metadata?.defaultOid)) {
             revision = metadata.defaultBranch
         }
-        return `${parsed.repository}@${revision}`
+        return `${uri.repository}@${revision}`
     }
 
-    public async getTreeItem(uri: string): Promise<vscode.TreeItem> {
+    public async getTreeItem(uriString: string): Promise<vscode.TreeItem> {
+        const uri = SourcegraphUri.parse(uriString)
         try {
             // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
-            const parsed = SourcegraphUri.parse(uri)
-            const label = await this.treeItemLabel(parsed)
-            const isFile = uri.includes('/-/blob/')
+            const label = await this.treeItemLabel(uri)
+            const isFile = uri.uri.includes('/-/blob/')
             const isDirectory = !isFile
             const collapsibleState = await this.getCollapsibleState(uri, isDirectory)
             const command = isFile
@@ -116,25 +119,28 @@ export class SourcegraphFileSystemProvider
                   }
                 : undefined
             return {
-                id: uri,
+                id: uri.uri,
                 label,
-                tooltip: uri.replace('sourcegraph://', 'https://'),
+                tooltip: uri.uri.replace('sourcegraph://', 'https://'),
                 collapsibleState,
                 command,
-                resourceUri: vscode.Uri.parse(uri),
+                resourceUri: vscode.Uri.parse(uri.uri),
             }
         } catch (error) {
-            log.appendLine(`ERROR: getTreeItem(${uri}) error=${error}`)
+            log.appendLine(`ERROR: getTreeItem(${uri.uri}) error=${error}`)
             return Promise.resolve({})
         }
     }
-    private async getCollapsibleState(uri: string, isDirectory: boolean): Promise<vscode.TreeItemCollapsibleState> {
-        const parent = SourcegraphUri.parse(uri).parent()
+    private async getCollapsibleState(
+        uri: SourcegraphUri,
+        isDirectory: boolean
+    ): Promise<vscode.TreeItemCollapsibleState> {
+        const parent = uri.parent()
         if (isDirectory && parent) {
-            const parsedParent = SourcegraphUri.parse(parent)
-            if (parsedParent.path) {
-                const tree = await this.getFileTree(parsedParent)
-                const directChildren = tree?.directChildren(parsedParent.path)
+            const parentUri = SourcegraphUri.parse(parent)
+            if (parentUri.path) {
+                const tree = await this.getFileTree(parentUri)
+                const directChildren = tree?.directChildren(parentUri.path)
                 if (directChildren && directChildren.length === 1) {
                     return vscode.TreeItemCollapsibleState.Expanded
                 }
@@ -212,7 +218,7 @@ export class SourcegraphFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Location[] | undefined> {
         if (document.languageId === 'sourcegraph') return this.searchReferences(document, token)
-        const blob = await this.fetchBlob(document.uri.toString(true))
+        const blob = await this.fetchBlob(sourcegraphUri(document.uri))
         const locationNodes = await referencesQuery(
             {
                 repository: blob.repository,
@@ -231,7 +237,7 @@ export class SourcegraphFileSystemProvider
         position: vscode.Position,
         token: vscode.CancellationToken
     ): Promise<vscode.Definition | undefined> {
-        const blob = await this.fetchBlob(document.uri.toString(true))
+        const blob = await this.fetchBlob(sourcegraphUri(document.uri))
         const locations = await definitionQuery(
             {
                 repository: blob.repository,
@@ -271,7 +277,7 @@ export class SourcegraphFileSystemProvider
         position: vscode.Position,
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
-        const blob = await this.fetchBlob(document.uri.toString(true))
+        const blob = await this.fetchBlob(sourcegraphUri(document.uri))
         const hover = await hoverQuery(
             {
                 repository: blob.repository,
@@ -293,7 +299,7 @@ export class SourcegraphFileSystemProvider
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
         log.appendLine(`STAT: ${uri.toString(true)}`)
         try {
-            const blob = await this.fetchBlob(uri.toString(true))
+            const blob = await this.fetchBlob(sourcegraphUri(uri))
             return {
                 mtime: blob.time,
                 ctime: blob.time,
@@ -312,28 +318,23 @@ export class SourcegraphFileSystemProvider
     }
     public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
         log.appendLine(`READ_FILE ${uri.toString(true)}`)
-        const blob = await this.fetchBlob(uri.toString(true))
+        const blob = await this.fetchBlob(sourcegraphUri(uri))
         return blob.content
     }
-    public async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        if (uri.toString(true).endsWith('/-')) return Promise.resolve([])
-        log.appendLine(`READ_DIRECTORY ${uri.toString(true)}`)
-        // try {
-        //     await this.fetchBlob(uri.toString(true))
-        // } catch (error) {
-        //     log.appendLine(`ERROR readDirectory.fetchBlob(${uri.toString(true)})`)
-        // }
+    public async readDirectory(vscodeUri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+        const uri = sourcegraphUri(vscodeUri)
+        if (uri.uri.endsWith('/-')) return Promise.resolve([])
+        log.appendLine(`READ_DIRECTORY ${uri.uri}`)
 
-        const parsed = SourcegraphUri.parse(uri.toString(true))
-        log.appendLine(`READ_DIRECTORY parsed.path=${parsed.path}`)
-        if (typeof parsed.path === 'undefined') {
-            parsed.path = ''
+        log.appendLine(`READ_DIRECTORY uri.path=${uri.path}`)
+        if (typeof uri.path === 'undefined') {
+            uri.path = ''
         }
-        const tree = await this.getFileTree(parsed)
+        const tree = await this.getFileTree(uri)
         if (!tree) {
             return []
         }
-        const children = tree.directChildren(parsed.path)
+        const children = tree.directChildren(uri.path)
         log.appendLine(`result=${children.join('\n')}`)
         return children.map(child => {
             const isDirectory = child.includes('/-/tree/')
@@ -392,40 +393,39 @@ export class SourcegraphFileSystemProvider
         const defaultFile = readme ? readme : files[0]
         return `sourcegraph://sourcegraph.com/${repository}@${revision}/-/blob/${defaultFile}`
     }
-    private async fetchBlob(uri: string): Promise<Blob> {
-        const result = this.cache.get(uri)
+    private async fetchBlob(uri: SourcegraphUri): Promise<Blob> {
+        const result = this.cache.get(uri.uri)
         if (result) {
             return result
         }
-        const parsed = SourcegraphUri.parse(uri)
-        await this.repositoryMetadata(parsed.repository)
+        await this.repositoryMetadata(uri.repository)
         const token = new vscode.CancellationTokenSource()
-        if (!parsed.revision) {
-            parsed.revision = (await this.repositoryMetadata(parsed.repository, token.token))?.defaultBranch
+        if (!uri.revision) {
+            uri.revision = (await this.repositoryMetadata(uri.repository, token.token))?.defaultBranch
         }
-        if (!parsed.revision) {
-            throw new Error(`no parsed.revision from uri ${uri.toString()}`)
+        if (!uri.revision) {
+            throw new Error(`no uri.revision from uri ${uri.toString()}`)
         }
-        if (typeof parsed.path === 'undefined') {
-            parsed.path = ''
+        if (typeof uri.path === 'undefined') {
+            uri.path = ''
         }
         const content = await contentQuery(
             {
-                repository: parsed.repository,
-                revision: parsed.revision,
-                path: parsed.path,
+                repository: uri.repository,
+                revision: uri.revision,
+                path: uri.path,
             },
             token.token
         )
-        this.downloadFiles(parsed, parsed.revision)
+        this.downloadFiles(uri, uri.revision)
         if (content) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
-                uri,
-                repository: parsed.repository,
-                revision: parsed.revision,
+                uri: uri.uri,
+                repository: uri.repository,
+                revision: uri.revision,
                 content: encoder.encode(content),
-                path: parsed.path,
+                path: uri.path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
             }
@@ -468,18 +468,22 @@ export class SourcegraphFileSystemProvider
         return metadata
     }
 
-    downloadFiles(parsed: SourcegraphUri, revision: string): Promise<string[]> {
-        const key = parsed.repositoryString()
+    downloadFiles(uri: SourcegraphUri, revision: string): Promise<string[]> {
+        const key = uri.repositoryString()
         let downloadingFiles = this.files.get(key)
         if (!downloadingFiles) {
             downloadingFiles = filesQuery(
-                { repository: parsed.repository, revision },
+                { repository: uri.repository, revision },
                 new vscode.CancellationTokenSource().token
             )
             this.files.set(key, downloadingFiles)
         }
         return downloadingFiles
     }
+}
+
+function sourcegraphUri(uri: vscode.Uri): SourcegraphUri {
+    return SourcegraphUri.parse(uri.toString(true))
 }
 
 export interface RepositoryFile {

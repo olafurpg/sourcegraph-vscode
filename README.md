@@ -48,9 +48,3 @@ To develop the extension:
 - Press <kbd>F5</kbd> to open a new VS Code window with the extension loaded.
 - After making changes to `src/extension.ts`, reload the window by clicking the reload icon in the debug toolbar or with <kbd>F5</kbd>.
 - To release a new version: follow [Conventional Commit Messages](https://conventionalcommits.org/) and push to/merge into to master. CI will do the release.
-
-  <p>
-    <a style='cursor:pointer'>github.com/sourcegraph/sourcegraph@main/-/blob/src/lsif/types.go</a>
-<pre><a style='cursor:pointer'>function get<mark>Sub</mark>Tree(id: string): Promise<[BookmarkTreeNode]></a>
-<a style='cursor:pointer'>function getSub<mark>Tree</mark>(id: string): Promise<[BookmarkTreeNode]></a></pre>
-  </p>

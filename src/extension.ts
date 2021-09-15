@@ -2,7 +2,13 @@ import open from 'open'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
-import { activateBrowseCommand } from './commands/browseCommand'
+import { SourcegraphFileSystemProvider } from './file-system/SourcegraphFileSystemProvider'
+import { SourcegraphSemanticTokenProvider } from './highlighting/SourcegraphSemanticTokenProvider'
+import { browseCommand } from './commands/browseCommand'
+import { createNewNotebookCommand } from './commands/createNewNotebookCommand'
+import { openSourcegraphUriCommand } from './commands/openSourcegraphUriCommand'
+import { SourcegraphCompletionItemProvider } from './notebook/SourcegraphCompletionItemProvider'
+import { SourcegraphNotebookSerializer } from './notebook/SourcegraphNotebookSerializer'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
@@ -93,9 +99,37 @@ export function activate(context: vscode.ExtensionContext): void {
     // Register our extension commands (see package.json).
     context.subscriptions.push(vscode.commands.registerCommand('extension.open', handleCommandErrors(openCommand)))
     context.subscriptions.push(vscode.commands.registerCommand('extension.search', handleCommandErrors(searchCommand)))
-    activateBrowseCommand(context)
 
-    // Register browse-related features.
+    // Register file-system related functionality.
+    const fs = new SourcegraphFileSystemProvider()
+    vscode.workspace.registerFileSystemProvider('sourcegraph', fs, { isReadonly: true })
+    vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, fs)
+    vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, fs)
+    const treeView = vscode.window.createTreeView('sourcegraph.files', { treeDataProvider: fs, showCollapseAll: true })
+    fs.setTreeView(treeView)
+    const semanticTokens = new SourcegraphSemanticTokenProvider()
+    context.subscriptions.push(treeView)
+    context.subscriptions.push(vscode.commands.registerCommand('extension.browse', () => browseCommand(fs)))
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.createNewNotebook', () => createNewNotebookCommand())
+    )
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.openFile', (uri: string) => {
+            openSourcegraphUriCommand(vscode.Uri.parse(uri))
+        })
+    )
+
+    // Register Notebooks related functionality.
+    vscode.languages.registerReferenceProvider({ language: 'sourcegraph' }, fs)
+    vscode.languages.registerDocumentSemanticTokensProvider({ language: 'sourcegraph' }, semanticTokens, semanticTokens)
+    vscode.languages.registerCompletionItemProvider(
+        { language: 'sourcegraph' },
+        new SourcegraphCompletionItemProvider()
+    )
+    vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
+    fs.didFocus(vscode.window.activeTextEditor?.document.uri)
+    vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
 }
 
 export function deactivate(): void {
