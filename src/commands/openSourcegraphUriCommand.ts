@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import { SourcegraphUri } from '../file-system/SourcegraphUri'
 
-export async function openSourcegraphUriCommand(uri: SourcegraphUri): Promise<void> {
+export default async function openSourcegraphUriCommand(uri: SourcegraphUri): Promise<void> {
     const textDocument = await vscode.workspace.openTextDocument(vscode.Uri.parse(uri.uri))
     const selection = getSelection(uri, textDocument)
     await vscode.window.showTextDocument(textDocument, {
