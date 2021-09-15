@@ -1,5 +1,5 @@
 import assert from 'assert'
-import { MarkdownFile } from './MarkdownFile'
+import MarkdownFile from './MarkdownFile'
 
 function checkRoundtrip(name: string, input: string) {
     it(name, () => {
