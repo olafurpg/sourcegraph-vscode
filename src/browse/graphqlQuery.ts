@@ -129,10 +129,15 @@ export async function searchHtml(
         if (!url) {
             continue
         }
+        const lineMatches = node.lineMatches || []
+        if (lineMatches.length === 0) {
+            continue
+        }
+
         html.push('<p>')
         html.push(`<code>${url}</code>`)
         html.push('<pre>')
-        for (const [lineMatchIndex, lineMatch] of (node.lineMatches || []).entries()) {
+        for (const [lineMatchIndex, lineMatch] of lineMatches.entries()) {
             const line = lineMatch.lineNumber
             if (!line) {
                 continue
