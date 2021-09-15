@@ -8,6 +8,8 @@ import { log } from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'
 import { filesQuery } from '../queries/filesQuery'
+import { PositionParameters } from '../queries/PositionParameters'
+import { Range } from '../queries/Range'
 
 export interface RepositoryFile {
     repositoryUri: string
@@ -241,8 +243,7 @@ export class BrowseFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Definition | undefined> {
         const blob = await this.fetchBlob(document.uri.toString(true))
-        const definition = await graphqlQuery<DefinitionParameters, DefinitionResult>(
-            DefinitionQuery,
+        const locations = await definitionQuery(
             {
                 repository: blob.repository,
                 revision: blob.revision,
@@ -252,7 +253,7 @@ export class BrowseFileSystemProvider
             },
             token
         )
-        return definition?.data.repository.commit.blob.lsif.definitions.nodes.map(node => this.nodeToLocation(node))
+        return locations.map(node => this.nodeToLocation(node))
     }
 
     private nodeToLocation(node: LocationNode): vscode.Location {
@@ -581,24 +582,13 @@ query Content($repository: String!, $revision: String!, $path: String!) {
   }
 }`
 
-interface Position {
-    line: number
-    character: number
+export async function definitionQuery(
+    parameters: PositionParameters,
+    token: vscode.CancellationToken
+): Promise<LocationNode[]> {
+    const definition = await graphqlQuery<DefinitionParameters, DefinitionResult>(DefinitionQuery, parameters, token)
+    return definition?.data?.repository?.commit?.blob?.lsif?.definitions?.nodes || []
 }
-
-interface Range {
-    start: Position
-    end: Position
-}
-
-interface PositionParameters {
-    repository: string
-    revision: string
-    path: string
-    line: number
-    character: number
-}
-
 type DefinitionParameters = PositionParameters
 interface DefinitionResult {
     data: {
