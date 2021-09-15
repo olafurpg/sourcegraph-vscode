@@ -8,10 +8,11 @@ import { SourcegraphUri } from '../file-system/SourcegraphUri'
 export async function browseCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {
         const uri = await new BrowseQuickPick().getBrowseUri(fs)
-        log.appendLine(`QUICK_PICK_RESULT ${uri}`)
         await openSourcegraphUriCommand(vscode.Uri.parse(uri))
     } catch (error) {
-        log.appendLine(`ERROR - browseCommand: ${error}`)
+        if (typeof error !== 'undefined') {
+            log.appendLine(`ERROR - browseCommand: ${error}`)
+        }
     }
 }
 
@@ -19,13 +20,13 @@ const RECENTLY_BROWSED_FILES_KEY = 'recentlyBrowsedFiles'
 
 class BrowseQuickPick {
     private config = vscode.workspace.getConfiguration('sourcegraph')
-    private recentFiles: string[] = this.config.get<string[]>(RECENTLY_BROWSED_FILES_KEY, [])
-    private recentItems: BrowseQuickPickItem[] = []
+    private recentlyBrowsedUris: string[] = this.config.get<string[]>(RECENTLY_BROWSED_FILES_KEY, [])
+    private recentlyBrowsedItems: BrowseQuickPickItem[] = []
     constructor() {
-        for (const file of this.recentFiles) {
+        for (const file of this.recentlyBrowsedUris) {
             const item = browseQuickPickItem(file)
             if (item) {
-                this.recentItems.push(item)
+                this.recentlyBrowsedItems.push(item)
             }
         }
     }
@@ -39,7 +40,7 @@ class BrowseQuickPick {
             pick.matchOnDescription = true
             pick.matchOnDetail = true
             let isAllFilesEnabled = false
-            pick.items = this.recentItems
+            pick.items = this.recentlyBrowsedItems
             let pendingRequests: vscode.CancellationTokenSource | undefined
             const onDidChangeValue = async (value: string) => {
                 if (pendingRequests) {
@@ -47,7 +48,6 @@ class BrowseQuickPick {
                     pendingRequests.dispose()
                     pendingRequests = undefined
                 }
-                log.appendLine(`VALUE: ${value}`)
                 if (value.startsWith('https://sourcegraph.com')) {
                     const item = browseQuickPickItem(value)
                     if (item) {
@@ -55,7 +55,7 @@ class BrowseQuickPick {
                         isAllFilesEnabled = false
                     } else {
                         log.appendLine(`NO parsed.path ${value}`)
-                        // Report some kind or error message
+                        // TODO: Report some kind or error message
                     }
                 } else if (value.startsWith('repo:')) {
                     pendingRequests = new vscode.CancellationTokenSource()
@@ -72,12 +72,11 @@ class BrowseQuickPick {
                         pick.busy = false
                     }
                 } else if (!isAllFilesEnabled) {
-                    log.appendLine(`FETCHING_FILES`)
                     isAllFilesEnabled = true
                     pick.busy = true
                     const allFiles = await fs.allFileFromOpenRepositories()
                     pick.busy = false
-                    const newItems: BrowseQuickPickItem[] = [...this.recentItems]
+                    const newItems: BrowseQuickPickItem[] = [...this.recentlyBrowsedItems]
                     for (const repo of allFiles) {
                         for (const file of repo.fileNames) {
                             if (file === '') {
@@ -109,18 +108,14 @@ class BrowseQuickPick {
                 try {
                     if (selection) {
                         if (selection.repo) {
-                            const originalUri = selection.uri
                             if (!selection.uri || !SourcegraphUri.parse(selection.uri).path) {
-                                selection.uri = await fs.defaultFileUri(selection.repo)
+                                selection.uri = (await fs.defaultFileUri(selection.repo)).uri
                             }
-                            const parsed = SourcegraphUri.parse(selection.uri)
-                            log.appendLine(
-                                `SELECT original=${originalUri} uri=${selection.uri} parsed.revision=${parsed.revision}`
-                            )
-                            if (!parsed.revision) {
-                                const metadata = await fs.repositoryMetadata(parsed.repository)
-                                parsed.revision = metadata?.defaultBranch || 'HEAD'
-                                selection.uri = `${parsed.repositoryString()}/-/blob/${parsed.path}`
+                            const uri = SourcegraphUri.parse(selection.uri)
+                            if (!uri.revision) {
+                                const metadata = await fs.repositoryMetadata(uri.repository)
+                                uri.revision = metadata?.defaultBranch || 'HEAD'
+                                selection.uri = `${uri.repositoryUri()}/-/blob/${uri.path}`
                             }
                         }
                         this.addRecentlyBrowsedFile(selection.uri)
@@ -140,9 +135,9 @@ class BrowseQuickPick {
     }
 
     private addRecentlyBrowsedFile(value: string) {
-        if (!this.recentFiles.includes(value)) {
-            this.recentFiles = [value, ...this.recentFiles.slice(0, 9)]
-            this.config.update(RECENTLY_BROWSED_FILES_KEY, this.recentFiles, vscode.ConfigurationTarget.Global)
+        if (!this.recentlyBrowsedUris.includes(value)) {
+            this.recentlyBrowsedUris = [value, ...this.recentlyBrowsedUris.slice(0, 9)]
+            this.config.update(RECENTLY_BROWSED_FILES_KEY, this.recentlyBrowsedUris, vscode.ConfigurationTarget.Global)
         }
     }
 }

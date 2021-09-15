@@ -16,10 +16,11 @@ In the command palette (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> or <kbd>Ctr
 
 Keyboard Shortcuts:
 
-| Description                     | Mac                            | Linux / Windows             |
-| ------------------------------- | ------------------------------ | --------------------------- |
-| Open file in Sourcegraph        | <kbd>Option</kbd>+<kbd>A</kbd> | <kbd>Alt</kbd>+<kbd>A</kbd> |
-| Search selection in Sourcegraph | <kbd>Option</kbd>+<kbd>S</kbd> | <kbd>Alt</kbd>+<kbd>S</kbd> |
+| Description                              | Mac                            | Linux / Windows             |
+| ---------------------------------------- | ------------------------------ | --------------------------- |
+| Sourcegraph: Open file in browser        | <kbd>Option</kbd>+<kbd>A</kbd> | <kbd>Alt</kbd>+<kbd>A</kbd> |
+| Sourcegraph: Browse file in editor       | <kbd>Option</kbd>+<kbd>B</kbd> | <kbd>Alt</kbd>+<kbd>B</kbd> |
+| Sourcegraph: Search selection in browser | <kbd>Option</kbd>+<kbd>S</kbd> | <kbd>Alt</kbd>+<kbd>S</kbd> |
 
 ## Extension Settings
 

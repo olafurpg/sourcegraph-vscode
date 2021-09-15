@@ -86,10 +86,10 @@ export class SourcegraphUri {
             range
         )
     }
-    public repositoryString(): string {
-        return `sourcegraph://${this.url.host}/${this.repository}${this.revisionString()}`
+    public repositoryUri(): string {
+        return `sourcegraph://${this.url.host}/${this.repository}${this.revisionPath()}`
     }
-    public revisionString(): string {
+    public revisionPath(): string {
         return this.revision ? `@${this.revision}` : ''
     }
     public parent(): string | undefined {

@@ -14,6 +14,8 @@ import { contentQuery } from '../queries/contentQuery'
 import { hoverQuery } from '../queries/hoverQuery'
 import { referencesQuery } from '../queries/referencesQuery'
 
+const SRC_ENDPOINT_HOST = 'sourcegraph.com'
+
 export class SourcegraphFileSystemProvider
     implements
         vscode.TreeDataProvider<string>,
@@ -58,7 +60,7 @@ export class SourcegraphFileSystemProvider
             const uri = SourcegraphUri.parse(repository)
             promises.push({
                 repositoryUri: repository,
-                repositoryLabel: `${uri.repository}${uri.revisionString()}`,
+                repositoryLabel: `${uri.repository}${uri.revisionPath()}`,
                 fileNames,
             })
         }
@@ -90,7 +92,7 @@ export class SourcegraphFileSystemProvider
     }
     private async treeItemLabel(uri: SourcegraphUri): Promise<string> {
         if (uri.path) {
-            return this.filename(uri.path)
+            return filename(uri.path)
         }
         const metadata = await this.repositoryMetadata(uri.repository, emptyCancelationToken())
         let revision = uri.revision
@@ -148,11 +150,11 @@ export class SourcegraphFileSystemProvider
         }
         return isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     }
-    private async getFileTree(parsed: SourcegraphUri): Promise<FileTree | undefined> {
-        if (!parsed.revision) {
-            parsed.revision = this.metadata.get(parsed.repository)?.defaultBranch
+    private async getFileTree(uri: SourcegraphUri): Promise<FileTree | undefined> {
+        if (!uri.revision) {
+            uri.revision = this.metadata.get(uri.repository)?.defaultBranch
         }
-        const downloadingKey = parsed.repositoryString()
+        const downloadingKey = uri.repositoryUri()
         const downloading = this.files.get(downloadingKey)
         if (!downloading) {
             log.appendLine(
@@ -166,29 +168,29 @@ export class SourcegraphFileSystemProvider
             return Promise.resolve(undefined)
         }
         // log.appendLine(`new FileTree(${JSON.stringify(files)})`)
-        return new FileTree(parsed, files)
+        return new FileTree(uri, files)
     }
-    public async getChildren(uri?: string): Promise<string[] | undefined> {
+    public async getChildren(uriString?: string): Promise<string[] | undefined> {
         try {
-            if (!uri) {
+            if (!uriString) {
                 const repos = [...this.repos]
                 return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
             }
-            const parsed = SourcegraphUri.parse(uri)
-            if (typeof parsed.path === 'undefined') {
-                parsed.path = ''
+            const uri = SourcegraphUri.parse(uriString)
+            if (typeof uri.path === 'undefined') {
+                uri.path = ''
             }
-            const tree = await this.getFileTree(parsed)
-            const result = tree?.directChildren(parsed.path)
+            const tree = await this.getFileTree(uri)
+            const result = tree?.directChildren(uri.path)
             // log.appendLine(`getChildren(${uri}) path=${parsed.path} tree=${tree} result=${JSON.stringify(result)}`)
             return result
         } catch (error) {
-            log.appendLine(`ERROR: getChildren(${uri}) error=${error}`)
+            log.appendLine(`ERROR: getChildren(${uriString}) error=${error}`)
             return Promise.resolve(undefined)
         }
     }
-    public getParent(uri: string): string | undefined {
-        return SourcegraphUri.parse(uri).parent()
+    public getParent(uriString: string): string | undefined {
+        return SourcegraphUri.parse(uriString).parent()
     }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
@@ -201,14 +203,13 @@ export class SourcegraphFileSystemProvider
     ): Promise<vscode.Location[]> {
         const repos = [...this.repos]
             .map(repo => {
-                const parsed = SourcegraphUri.parse(repo)
-                const revision = parsed.revision ? `@${parsed.revision}` : ''
-                return `repo:^${parsed.repository}$${revision}`
+                const uri = SourcegraphUri.parse(repo)
+                return `repo:^${uri.repository}$${uri.revisionPath()}`
             })
             .join(' OR ')
         const query = `(${repos}) AND ${document.getText()}`
         log.appendLine(`QUERY ${query}`)
-        return await search('sourcegraph.com', query, SearchPatternType.literal, token)
+        return await search(SRC_ENDPOINT_HOST, query, SearchPatternType.literal, token)
     }
 
     public async provideReferences(
@@ -218,7 +219,8 @@ export class SourcegraphFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Location[] | undefined> {
         if (document.languageId === 'sourcegraph') return this.searchReferences(document, token)
-        const blob = await this.fetchBlob(sourcegraphUri(document.uri))
+        const uri = sourcegraphUri(document.uri)
+        const blob = await this.fetchBlob(uri)
         const locationNodes = await referencesQuery(
             {
                 repository: blob.repository,
@@ -237,7 +239,8 @@ export class SourcegraphFileSystemProvider
         position: vscode.Position,
         token: vscode.CancellationToken
     ): Promise<vscode.Definition | undefined> {
-        const blob = await this.fetchBlob(sourcegraphUri(document.uri))
+        const uri = sourcegraphUri(document.uri)
+        const blob = await this.fetchBlob(uri)
         const locations = await definitionQuery(
             {
                 repository: blob.repository,
@@ -263,7 +266,7 @@ export class SourcegraphFileSystemProvider
         }
         return new vscode.Location(
             vscode.Uri.parse(
-                `sourcegraph://sourcegraph.com/${node.resource.repository.name}@${revision}/-/blob/${node.resource.path}`
+                `sourcegraph://${SRC_ENDPOINT_HOST}/${node.resource.repository.name}@${revision}/-/blob/${node.resource.path}`
             ),
             new vscode.Range(
                 new vscode.Position(node.range.start.line, node.range.start.character),
@@ -316,16 +319,16 @@ export class SourcegraphFileSystemProvider
             }
         }
     }
-    public async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-        log.appendLine(`READ_FILE ${uri.toString(true)}`)
-        const blob = await this.fetchBlob(sourcegraphUri(uri))
-        return blob.content
+
+    public async readFile(vscodeUri: vscode.Uri): Promise<Uint8Array> {
+        const uri = sourcegraphUri(vscodeUri)
+        log.appendLine(`READ_FILE ${uri.uri}`)
+        return (await this.fetchBlob(uri)).content
     }
+
     public async readDirectory(vscodeUri: vscode.Uri): Promise<[string, vscode.FileType][]> {
         const uri = sourcegraphUri(vscodeUri)
         if (uri.uri.endsWith('/-')) return Promise.resolve([])
-        log.appendLine(`READ_DIRECTORY ${uri.uri}`)
-
         log.appendLine(`READ_DIRECTORY uri.path=${uri.path}`)
         if (typeof uri.path === 'undefined') {
             uri.path = ''
@@ -335,51 +338,47 @@ export class SourcegraphFileSystemProvider
             return []
         }
         const children = tree.directChildren(uri.path)
-        log.appendLine(`result=${children.join('\n')}`)
         return children.map(child => {
             const isDirectory = child.includes('/-/tree/')
             const type = isDirectory ? vscode.FileType.Directory : vscode.FileType.File
-            const name = this.filename(child)
+            const name = filename(child)
             return [name, type]
         })
     }
 
-    // Unsupported methods for readonly file systems.
-    public createDirectory(uri: vscode.Uri): void | Thenable<void> {
-        throw new Error('Method not supported.')
+    public createDirectory(uri: vscode.Uri): void {
+        throw new Error('Method not supported in read-only file system.')
     }
     public writeFile(
-        uri: vscode.Uri,
-        content: Uint8Array,
-        options: { create: boolean; overwrite: boolean }
+        _uri: vscode.Uri,
+        _content: Uint8Array,
+        _options: { create: boolean; overwrite: boolean }
     ): void | Thenable<void> {
-        throw new Error('Method not supported.')
+        throw new Error('Method not supported in read-only file system.')
     }
-    public delete(uri: vscode.Uri, options: { recursive: boolean }): void | Thenable<void> {
-        throw new Error('Method not supported.')
+    public delete(_uri: vscode.Uri, _options: { recursive: boolean }): void {
+        throw new Error('Method not supported in read-only file system.')
     }
-    public rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): void | Thenable<void> {
-        throw new Error('Method not supported.')
+    public rename(_oldUri: vscode.Uri, _newUri: vscode.Uri, _options: { overwrite: boolean }): void {
+        throw new Error('Method not supported in read-only file system.')
     }
-    public watch(uri: vscode.Uri, options: { recursive: boolean; excludes: string[] }): vscode.Disposable {
-        throw new Error('Method not supported.')
+    public watch(_uri: vscode.Uri, _options: { recursive: boolean; excludes: string[] }): vscode.Disposable {
+        throw new Error('Method not supported in read-only file system.')
     }
 
-    public async defaultFileUri(repository: string): Promise<string> {
+    public async defaultFileUri(repository: string): Promise<SourcegraphUri> {
         const token = new vscode.CancellationTokenSource()
-        const revision = (await this.repositoryMetadata(repository, token.token))?.defaultBranch
-        if (!revision) {
+        const defaultBranch = (await this.repositoryMetadata(repository, token.token))?.defaultBranch
+        if (!defaultBranch) {
             log.appendLine(`ERROR defaultFileUri no revision ${repository}`)
             throw new Error(`ERROR defaultFileUri no revision ${repository}`)
         }
-        const uri = `sourcegraph://sourcegraph.com/${repository}@${revision}`
-        const files = await this.downloadFiles(SourcegraphUri.parse(uri), revision)
+        const uri = `sourcegraph://${SRC_ENDPOINT_HOST}/${repository}@${defaultBranch}`
+        const files = await this.downloadFiles(SourcegraphUri.parse(uri), defaultBranch)
         const readmes = files.filter(name => name.match(/readme/i))
         const candidates = readmes.length > 0 ? readmes : files
         let readme: string | undefined
-        log.appendLine(`CANDIDATES: ${JSON.stringify(files)} ${JSON.stringify(readmes)}`)
         for (const candidate of candidates) {
-            log.appendLine(`CANDIDATE: ${JSON.stringify(candidate)}`)
             if (candidate === '' || candidate === 'lsif-java.json') {
                 // Skip auto-generated file for JVM packages
                 continue
@@ -391,8 +390,11 @@ export class SourcegraphFileSystemProvider
             }
         }
         const defaultFile = readme ? readme : files[0]
-        return `sourcegraph://sourcegraph.com/${repository}@${revision}/-/blob/${defaultFile}`
+        return SourcegraphUri.parse(
+            `sourcegraph://${SRC_ENDPOINT_HOST}/${repository}@${defaultBranch}/-/blob/${defaultFile}`
+        )
     }
+
     private async fetchBlob(uri: SourcegraphUri): Promise<Blob> {
         const result = this.cache.get(uri.uri)
         if (result) {
@@ -437,7 +439,7 @@ export class SourcegraphFileSystemProvider
     }
 
     private updateCache(blob: Blob) {
-        const repo = SourcegraphUri.parse(blob.uri).repositoryString()
+        const repo = SourcegraphUri.parse(blob.uri).repositoryUri()
         this.cache.set(blob.uri, blob)
         const isNew = !this.repos.has(repo)
         if (isNew) {
@@ -445,11 +447,6 @@ export class SourcegraphFileSystemProvider
             this.uriEmitter.fire(undefined)
             this.repoEmitter.fire(repo)
         }
-    }
-
-    private filename(path: string): string {
-        const parts = path.split('/')
-        return parts[parts.length - 1]
     }
 
     public async repositoryMetadata(
@@ -468,8 +465,8 @@ export class SourcegraphFileSystemProvider
         return metadata
     }
 
-    downloadFiles(uri: SourcegraphUri, revision: string): Promise<string[]> {
-        const key = uri.repositoryString()
+    private downloadFiles(uri: SourcegraphUri, revision: string): Promise<string[]> {
+        const key = uri.repositoryUri()
         let downloadingFiles = this.files.get(key)
         if (!downloadingFiles) {
             downloadingFiles = filesQuery(
@@ -504,4 +501,9 @@ interface Blob {
 
 function emptyCancelationToken(): vscode.CancellationToken {
     return new vscode.CancellationTokenSource().token
+}
+
+function filename(path: string): string {
+    const parts = path.split('/')
+    return parts[parts.length - 1]
 }
