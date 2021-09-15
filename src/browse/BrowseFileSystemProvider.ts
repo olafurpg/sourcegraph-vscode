@@ -2,7 +2,7 @@
 import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, repoUriRevision } from './parseRepoUrl'
+import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent } from './parseRepoUrl'
 import { search } from '../queries/graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
@@ -57,7 +57,7 @@ export class BrowseFileSystemProvider
             const parsed = parseUri(repository)
             promises.push({
                 repositoryUri: repository,
-                repositoryLabel: `${parsed.repository}${repoUriRevision(parsed)}`,
+                repositoryLabel: `${parsed.repository}${parsed.revisionString()}`,
                 fileNames,
             })
         }
@@ -148,7 +148,7 @@ export class BrowseFileSystemProvider
         if (!parsed.revision) {
             parsed.revision = this.metadata.get(parsed.repository)?.defaultBranch
         }
-        const downloadingKey = repoUriRepository(parsed)
+        const downloadingKey = parsed.repositoryString()
         const downloading = this.files.get(downloadingKey)
         if (!downloading) {
             log.appendLine(
@@ -440,7 +440,7 @@ export class BrowseFileSystemProvider
     }
 
     private updateCache(blob: Blob) {
-        const repo = repoUriRepository(parseUri(blob.uri))
+        const repo = parseUri(blob.uri).repositoryString()
         this.cache.set(blob.uri, blob)
         const isNew = !this.repos.has(repo)
         if (isNew) {
@@ -472,7 +472,7 @@ export class BrowseFileSystemProvider
     }
 
     downloadFiles(parsed: ParsedRepoURI, revision: string): Promise<string[]> {
-        const key = repoUriRepository(parsed)
+        const key = parsed.repositoryString()
         let downloadingFiles = this.files.get(key)
         if (!downloadingFiles) {
             downloadingFiles = filesQuery(

@@ -2,23 +2,24 @@ import { URL, URLSearchParams } from 'url'
 import { Position } from '../queries/Position'
 import { Range } from '../queries/Range'
 
-export interface ParsedRepoURI {
-    url: URL
-    repository: string
-    rawRevision: string | undefined
-    commitRange: string | undefined
-    revision: string | undefined
-    commitID: string | undefined
-    path: string | undefined
-    position: Position | undefined
-    range: Range | undefined
-}
-
-export function repoUriRevision(parsed: ParsedRepoURI): string {
-    return parsed.revision ? `@${parsed.revision}` : ''
-}
-export function repoUriRepository(parsed: ParsedRepoURI): string {
-    return `sourcegraph://${parsed.url.host}/${parsed.repository}${repoUriRevision(parsed)}`
+export class ParsedRepoURI {
+    constructor(
+        public readonly url: URL,
+        public readonly repository: string,
+        public revision: string | undefined,
+        public path: string | undefined,
+        public readonly rawRevision: string | undefined,
+        public readonly commitRange: string | undefined,
+        public readonly commitID: string | undefined,
+        public readonly position: Position | undefined,
+        public readonly range: Range | undefined
+    ) {}
+    public repositoryString(): string {
+        return `sourcegraph://${this.url.host}/${this.repository}${this.revisionString()}`
+    }
+    public revisionString(): string {
+        return this.revision ? `@${this.revision}` : ''
+    }
 }
 
 export function repoUriParent(uri: string): string | undefined {
@@ -97,7 +98,7 @@ export function parseBrowserRepoURL(url: URL): ParsedRepoURI {
             }
         }
     }
-    return { url, repository, revision, rawRevision, commitID, path, commitRange, position, range }
+    return new ParsedRepoURI(url, repository, revision, rawRevision, commitID, path, commitRange, position, range)
 }
 
 type LineOrPositionOrRange =
