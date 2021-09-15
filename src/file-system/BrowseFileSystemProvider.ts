@@ -7,6 +7,7 @@ import { graphqlQuery, search } from './graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'
+import { filesQuery } from '../queries/filesQuery'
 
 export interface RepositoryFile {
     repositoryUri: string
@@ -492,14 +493,10 @@ export class BrowseFileSystemProvider
         const key = repoUriRepository(parsed)
         let downloadingFiles = this.files.get(key)
         if (!downloadingFiles) {
-            downloadingFiles = graphqlQuery<FilesParameters, FilesResult>(
-                FilesQuery,
-                {
-                    repository: parsed.repository,
-                    revision,
-                },
+            downloadingFiles = filesQuery(
+                { repository: parsed.repository, revision },
                 new vscode.CancellationTokenSource().token
-            ).then(result => result?.data?.repository?.commit?.fileNames || [])
+            )
             this.files.set(key, downloadingFiles)
         }
         return downloadingFiles
@@ -787,86 +784,6 @@ query References($repository: String!, $revision: String!, $path: String!, $line
   }
 }
 `
-const FilesQuery = `
-query FileNames($repository: String!, $revision: String!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      fileNames
-    }
-  }
-}
-`
-interface FilesParameters {
-    repository: string
-    revision: string
-}
-interface FilesResult {
-    data?: {
-        repository?: {
-            commit?: {
-                fileNames?: string[]
-            }
-        }
-    }
-}
-
-// const DirectoryQuery = `
-// query Directory($repository: String!, $revision: String!, $path: String!) {
-//   repository(name: $repository) {
-//     commit(rev: "", inputRevspec: $revision) {
-//       tree(path: $path) {
-//         ...TreeFields
-//       }
-//     }
-//   }
-// }
-
-// fragment TreeFields on GitTree {
-//   isRoot
-//   url
-//   entries(first: 2500, recursiveSingleChild: true) {
-//     ...TreeEntryFields
-//   }
-// }
-
-// fragment TreeEntryFields on TreeEntry {
-//   name
-//   path
-//   isDirectory
-//   url
-//   submodule {
-//     url
-//     commit
-//   }
-//   isSingleChild
-// }
-// `
-// interface DirectoryParameters {
-//     repository: string
-//     revision: string
-//     path: string
-// }
-// interface DirectoryResult {
-//     data?: {
-//         repository?: {
-//             commit?: {
-//                 tree?: {
-//                     isRoot: boolean
-//                     url: string
-//                     entries: DirectoryEntry[]
-//                 }
-//             }
-//         }
-//     }
-// }
-// interface DirectoryEntry {
-//     name: string
-//     path: string
-//     isDirectory: boolean
-//     url: string
-//     submodule: string
-//     isSingleChild: boolean
-// }
 
 interface Blob {
     uri: string

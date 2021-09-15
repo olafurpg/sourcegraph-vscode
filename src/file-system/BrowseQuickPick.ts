@@ -2,7 +2,7 @@ import { URL } from 'url'
 import * as vscode from 'vscode'
 import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
-import { repositories } from './graphqlQuery'
+import { repositoriesQuery } from './repositoriesQuery'
 import { parseBrowserRepoUri, parseBrowserRepoURL, repoUriRepository } from './parseRepoUrl'
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
@@ -71,7 +71,7 @@ export class BrowseQuickPick {
                     pendingRequests = new vscode.CancellationTokenSource()
                     pick.busy = true
                     const query = value.slice('repo:'.length)
-                    const repos = await repositories(query, pendingRequests.token)
+                    const repos = await repositoriesQuery(query, pendingRequests.token)
                     if (!pendingRequests.token.isCancellationRequested) {
                         pick.items = repos.map(repo => ({
                             label: `repo:${repo}`,
