@@ -3,28 +3,19 @@ import { URL } from 'url'
 import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, repoUriRevision } from './parseRepoUrl'
-import { graphqlQuery, search } from '../queries/graphqlQuery'
+import { search } from '../queries/graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'
 import { filesQuery } from '../queries/filesQuery'
-import { PositionParameters } from '../queries/PositionParameters'
-import { Range } from '../queries/Range'
 import { definitionQuery } from '../queries/definitionQuery'
 import { LocationNode } from '../queries/LocationNode'
-
-export interface RepositoryFile {
-    repositoryUri: string
-    repositoryLabel: string
-    fileNames: string[]
-}
-interface RepositoryMetadata {
-    defaultOid?: string
-    defaultAbbreviatedOid?: string
-    defaultBranch?: string
-    id?: string
-    commitToReferenceName?: Map<string, string>
-}
+import { revisionQuery } from './revisionQuery'
+import { RepositoryMetadata } from './RepositoryMetadata'
+import { RepositoryFile } from './RepositoryFile'
+import { contentQuery } from './contentQuery'
+import { hoverQuery } from './hoverQuery'
+import { referencesQuery } from './referencesQuery'
 
 export class BrowseFileSystemProvider
     implements
@@ -225,8 +216,7 @@ export class BrowseFileSystemProvider
     ): Promise<vscode.Location[] | undefined> {
         if (document.languageId === 'sourcegraph') return this.searchReferences(document, token)
         const blob = await this.fetchBlob(document.uri.toString(true))
-        const definition = await graphqlQuery<ReferencesParameters, ReferencesResult>(
-            ReferencesQuery,
+        const locationNodes = await referencesQuery(
             {
                 repository: blob.repository,
                 revision: blob.revision,
@@ -236,7 +226,7 @@ export class BrowseFileSystemProvider
             },
             token
         )
-        return definition?.data.repository.commit.blob.lsif.references.nodes.map(node => this.nodeToLocation(node))
+        return locationNodes.map(node => this.nodeToLocation(node))
     }
 
     public async provideDefinition(
@@ -285,8 +275,7 @@ export class BrowseFileSystemProvider
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | undefined> {
         const blob = await this.fetchBlob(document.uri.toString(true))
-        const hover = await graphqlQuery<HoverParameters, HoverResult>(
-            HoverQuery,
+        const hover = await hoverQuery(
             {
                 repository: blob.repository,
                 revision: blob.revision,
@@ -300,7 +289,7 @@ export class BrowseFileSystemProvider
             return undefined
         }
         return {
-            contents: [new vscode.MarkdownString(hover.data.repository.commit.blob.lsif.hover.markdown.text)],
+            contents: [new vscode.MarkdownString(hover)],
         }
     }
 
@@ -424,8 +413,7 @@ export class BrowseFileSystemProvider
         if (typeof parsed.path === 'undefined') {
             parsed.path = ''
         }
-        const contentResult = await graphqlQuery<ContentParameters, ContentResult>(
-            ContentQuery,
+        const content = await contentQuery(
             {
                 repository: parsed.repository,
                 revision: parsed.revision,
@@ -434,7 +422,6 @@ export class BrowseFileSystemProvider
             token.token
         )
         this.downloadFiles(parsed, parsed.revision)
-        const content = contentResult?.data?.repository?.commit?.blob?.content
         if (content) {
             const encoder = new TextEncoder()
             const toCacheResult: Blob = {
@@ -502,215 +489,6 @@ export class BrowseFileSystemProvider
 function parseUri(uri: string): ParsedRepoURI {
     return parseBrowserRepoURL(new URL(uri.replace('sourcegraph://', 'https://')))
 }
-
-export async function revisionQuery(
-    parameters: RevisionParameters,
-    token: vscode.CancellationToken
-): Promise<RepositoryMetadata> {
-    const response = await graphqlQuery<RevisionParameters, RevisionResult>(RevisionQuery, parameters, token)
-    return {
-        id: response?.data?.repositoryRedirect?.id,
-        defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
-        defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
-        defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
-    }
-}
-
-interface RevisionParameters {
-    repository: string
-}
-interface RevisionResult {
-    data?: {
-        repositoryRedirect?: {
-            id?: string
-            commit?: {
-                oid?: string
-                abbreviatedOID?: string
-                tree?: {
-                    url?: string
-                }
-            }
-            defaultBranch?: {
-                abbrevName?: string
-            }
-        }
-    }
-}
-const RevisionQuery = `
-query Revision($repository: String!) {
-  repositoryRedirect(name: $repository) {
-    ... on Repository {
-      id
-      mirrorInfo {
-        cloneInProgress
-        cloneProgress
-        cloned
-      }
-      commit(rev: "") {
-        oid
-        abbreviatedOID
-        tree(path: "") {
-          url
-        }
-      }
-      defaultBranch {
-        abbrevName
-      }
-    }
-    ... on Redirect {
-      url
-    }
-  }
-}`
-interface ContentParameters {
-    repository: string
-    revision: string
-    path: string
-}
-
-interface ContentResult {
-    data?: {
-        repository?: {
-            commit?: {
-                blob?: {
-                    content?: string
-                }
-            }
-        }
-    }
-}
-export const ContentQuery = `
-query Content($repository: String!, $revision: String!, $path: String!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        content
-      }
-    }
-  }
-}`
-
-interface HoverResult {
-    data: {
-        repository: {
-            commit: {
-                blob: {
-                    lsif: {
-                        hover: {
-                            markdown: {
-                                text: string
-                            }
-                            range: Range
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-type HoverParameters = PositionParameters
-interface HoverResult {
-    data: {
-        repository: {
-            commit: {
-                blob: {
-                    lsif: {
-                        hover: {
-                            markdown: {
-                                text: string
-                            }
-                            range: Range
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-const HoverQuery = `
-query Hover($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        lsif {
-          hover(line: $line, character: $character) {
-            markdown {
-              text
-            }
-            range {
-              start {
-                line
-                character
-              }
-              end {
-                line
-                character
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-`
-
-type ReferencesParameters = PositionParameters
-interface ReferencesResult {
-    data: {
-        repository: {
-            commit: {
-                blob: {
-                    lsif: {
-                        references: {
-                            nodes: LocationNode[]
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-export const ReferencesQuery = `
-query References($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!, $after: String) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        lsif {
-          references(line: $line, character: $character, after: $after) {
-            nodes {
-              resource {
-                path
-                repository {
-                  name
-                }
-                commit {
-                  oid
-                }
-              }
-              range {
-                start {
-                  line
-                  character
-                }
-                end {
-                  line
-                  character
-                }
-              }
-            }
-            pageInfo {
-              endCursor
-            }
-          }
-        }
-      }
-    }
-  }
-}
-`
 
 interface Blob {
     uri: string
