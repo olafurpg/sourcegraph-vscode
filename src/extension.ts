@@ -2,7 +2,7 @@ import open from 'open'
 import * as vscode from 'vscode'
 import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
-import { activateBrowseCommand } from './browse/browseCommand'
+import { activateBrowseCommand } from './file-system/browseCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
@@ -14,17 +14,17 @@ async function showError(error: Error): Promise<void> {
     await vscode.window.showErrorMessage(error.message)
 }
 
-const handleCommandErrors = <P extends unknown[], R>(command: (...args: P) => Promise<R>) => async (
-    ...args: P
-): Promise<R | void> => {
-    try {
-        return await command(...args)
-    } catch (error) {
-        if (error instanceof Error) {
-            await showError(error)
+const handleCommandErrors =
+    <P extends unknown[], R>(command: (...args: P) => Promise<R>) =>
+    async (...args: P): Promise<R | void> => {
+        try {
+            return await command(...args)
+        } catch (error) {
+            if (error instanceof Error) {
+                await showError(error)
+            }
         }
     }
-}
 
 /**
  * The command implementation for opening a cursor selection on Sourcegraph.

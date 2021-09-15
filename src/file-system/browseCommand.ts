@@ -4,9 +4,9 @@ import { log } from '../log'
 import { BrowseFileSystemProvider } from './BrowseFileSystemProvider'
 import { BrowseQuickPick } from './BrowseQuickPick'
 import { parseBrowserRepoURL, ParsedRepoURI } from './parseRepoUrl'
-import { SourcegraphCompletionItemProvider } from './SourcegraphCompletionItemProvider'
-import { SourcegraphNotebookSerializer } from './notebooks/SourcegraphNotebookSerializer'
-import { SourcegraphSemanticTokenProvider } from './SourcegraphSemanticTokenProvider'
+import { SourcegraphCompletionItemProvider } from '../notebook/SourcegraphCompletionItemProvider'
+import { SourcegraphNotebookSerializer } from '../notebook/SourcegraphNotebookSerializer'
+import { SourcegraphSemanticTokenProvider } from '../highlighting/SourcegraphSemanticTokenProvider'
 
 export async function activateBrowseCommand(context: vscode.ExtensionContext): Promise<void> {
     const fs = new BrowseFileSystemProvider()

@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
 import { log } from '../log'
-import { SearchPatternType } from './highlighting/scanner'
+import { SearchPatternType } from '../highlighting/scanner'
 // import { log } from '../log'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {

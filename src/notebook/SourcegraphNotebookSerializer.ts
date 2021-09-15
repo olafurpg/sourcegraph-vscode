@@ -1,8 +1,8 @@
 import { TextDecoder, TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { log } from '../../log'
-import { openFileCommand } from '../browseCommand'
-import { searchHtml } from '../graphqlQuery'
+import { log } from '../log'
+import { openFileCommand } from '../file-system/browseCommand'
+import { searchHtml } from '../file-system/graphqlQuery'
 import { SearchPatternType } from '../highlighting/scanner'
 import { MarkdownFile, MarkdownPart, MarkdownPartKind } from './MarkdownFile'
 

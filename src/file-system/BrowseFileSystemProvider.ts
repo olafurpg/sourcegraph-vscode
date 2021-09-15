@@ -6,7 +6,7 @@ import { parseBrowserRepoURL, ParsedRepoURI, repoUriParent, repoUriRepository, r
 import { graphqlQuery, search } from './graphqlQuery'
 import { log } from '../log'
 import { FileTree } from './FileTree'
-import { SearchPatternType } from './highlighting/scanner'
+import { SearchPatternType } from '../highlighting/scanner'
 
 export interface RepositoryFile {
     repositoryUri: string
@@ -27,7 +27,8 @@ export class BrowseFileSystemProvider
         vscode.FileSystemProvider,
         vscode.HoverProvider,
         vscode.DefinitionProvider,
-        vscode.ReferenceProvider {
+        vscode.ReferenceProvider
+{
     private isTreeViewVisible: boolean = false
     private isExpandedNode = new Set<string>()
     private treeView: vscode.TreeView<string> | undefined
