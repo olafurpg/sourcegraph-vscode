@@ -7,27 +7,8 @@ export default async function referencesQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<LocationNode[]> {
-    const response = await graphqlQuery<PositionParameters, ReferencesResult>(ReferencesQuery, parameters, token)
-    return response?.data?.repository?.commit?.blob?.lsif?.references?.nodes || []
-}
-
-interface ReferencesResult {
-    data?: {
-        repository?: {
-            commit?: {
-                blob?: {
-                    lsif?: {
-                        references?: {
-                            nodes?: LocationNode[]
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-const ReferencesQuery = `
+    const response = await graphqlQuery<PositionParameters, ReferencesResult>(
+        `
 query References($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!, $after: String) {
   repository(name: $repository) {
     commit(rev: $revision) {
@@ -64,4 +45,26 @@ query References($repository: String!, $revision: String!, $path: String!, $line
     }
   }
 }
-`
+`,
+
+        parameters,
+        token
+    )
+    return response?.data?.repository?.commit?.blob?.lsif?.references?.nodes || []
+}
+
+interface ReferencesResult {
+    data?: {
+        repository?: {
+            commit?: {
+                blob?: {
+                    lsif?: {
+                        references?: {
+                            nodes?: LocationNode[]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

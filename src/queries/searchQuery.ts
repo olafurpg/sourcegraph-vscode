@@ -10,31 +10,31 @@ export function searchQueryResult(
     return graphqlQuery<SearchParameters, SearchResult>(
         `
 query Search($query: String!) {
-    search(query: $query, patternType:${SearchPatternType[patternType]}) {
+  search(query: $query, patternType:${SearchPatternType[patternType]}) {
 
+    results {
       results {
-        results {
-          ... on FileMatch {
-            ...FileMatchFields
-          }
+        ... on FileMatch {
+          ...FileMatchFields
         }
-        limitHit
-        matchCount
-        elapsedMilliseconds
       }
+      limitHit
+      matchCount
+      elapsedMilliseconds
     }
   }
+}
 
-  fragment FileMatchFields on FileMatch {
-    file {
-      url
-    }
-    lineMatches {
-      lineNumber
-      offsetAndLengths
-      preview
-    }
+fragment FileMatchFields on FileMatch {
+  file {
+    url
   }
+  lineMatches {
+    lineNumber
+    offsetAndLengths
+    preview
+  }
+}
 `,
         { query },
         token
@@ -76,6 +76,7 @@ export async function searchQuery(
 export interface SearchParameters {
     query: string
 }
+
 export interface SearchResult {
     data?: {
         search?: {
@@ -91,6 +92,7 @@ interface SearchResultNode {
     }
     lineMatches?: LineMatch[]
 }
+
 interface LineMatch {
     lineNumber?: number
     offsetAndLengths?: [number, number][]

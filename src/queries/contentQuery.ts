@@ -5,7 +5,21 @@ export default async function contentQuery(
     parameters: ContentParameters,
     token: vscode.CancellationToken
 ): Promise<string | undefined> {
-    const contentResult = await graphqlQuery<ContentParameters, ContentResult>(ContentQuery, parameters, token)
+    const contentResult = await graphqlQuery<ContentParameters, ContentResult>(
+        `
+query Content($repository: String!, $revision: String!, $path: String!) {
+  repository(name: $repository) {
+    commit(rev: $revision) {
+      blob(path: $path) {
+        content
+      }
+    }
+  }
+}
+`,
+        parameters,
+        token
+    )
     return contentResult?.data?.repository?.commit?.blob?.content
 }
 
@@ -26,13 +40,3 @@ interface ContentResult {
         }
     }
 }
-const ContentQuery = `
-query Content($repository: String!, $revision: String!, $path: String!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        content
-      }
-    }
-  }
-}`

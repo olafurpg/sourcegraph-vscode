@@ -7,27 +7,8 @@ export default async function definitionQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<LocationNode[]> {
-    const definition = await graphqlQuery<PositionParameters, DefinitionResult>(DefinitionQuery, parameters, token)
-    return definition?.data?.repository?.commit?.blob?.lsif?.definitions?.nodes || []
-}
-
-interface DefinitionResult {
-    data: {
-        repository: {
-            commit: {
-                blob: {
-                    lsif: {
-                        definitions: {
-                            nodes: LocationNode[]
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-const DefinitionQuery = `
+    const definition = await graphqlQuery<PositionParameters, DefinitionResult>(
+        `
 query Definition($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
   repository(name: $repository) {
     commit(rev: $revision) {
@@ -61,4 +42,25 @@ query Definition($repository: String!, $revision: String!, $path: String!, $line
     }
   }
 }
-`
+`,
+        parameters,
+        token
+    )
+    return definition?.data?.repository?.commit?.blob?.lsif?.definitions?.nodes || []
+}
+
+interface DefinitionResult {
+    data: {
+        repository: {
+            commit: {
+                blob: {
+                    lsif: {
+                        definitions: {
+                            nodes: LocationNode[]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

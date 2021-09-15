@@ -35,9 +35,9 @@ function checkChildren(directory: string, expected: string[]) {
         const childUris = tree.directChildren(directory)
         const obtained: string[] = []
         for (const uri of childUris) {
-            const parsed = SourcegraphUri.parse(uri)
-            if (parsed.path) {
-                const path = uri.includes('/tree/') ? parsed.path + `/` : parsed.path
+            const uri = SourcegraphUri.parse(uri)
+            if (uri.path) {
+                const path = uri.includes('/tree/') ? uri.path + `/` : uri.path
                 obtained.push(path)
             }
         }

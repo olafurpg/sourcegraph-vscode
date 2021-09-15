@@ -13,36 +13,8 @@ export default async function repositoryMetadataQuery(
     parameters: RevisionParameters,
     token: vscode.CancellationToken
 ): Promise<RepositoryMetadata> {
-    const response = await graphqlQuery<RevisionParameters, RevisionResult>(RevisionQuery, parameters, token)
-    return {
-        id: response?.data?.repositoryRedirect?.id,
-        defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
-        defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
-        defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
-    }
-}
-
-interface RevisionParameters {
-    repository: string
-}
-interface RevisionResult {
-    data?: {
-        repositoryRedirect?: {
-            id?: string
-            commit?: {
-                oid?: string
-                abbreviatedOID?: string
-                tree?: {
-                    url?: string
-                }
-            }
-            defaultBranch?: {
-                abbrevName?: string
-            }
-        }
-    }
-}
-const RevisionQuery = `
+    const response = await graphqlQuery<RevisionParameters, RevisionResult>(
+        `
 query Revision($repository: String!) {
   repositoryRedirect(name: $repository) {
     ... on Repository {
@@ -67,4 +39,37 @@ query Revision($repository: String!) {
       url
     }
   }
-}`
+}
+`,
+        parameters,
+        token
+    )
+    return {
+        id: response?.data?.repositoryRedirect?.id,
+        defaultOid: response?.data?.repositoryRedirect?.commit?.oid,
+        defaultAbbreviatedOid: response?.data?.repositoryRedirect?.commit?.abbreviatedOID,
+        defaultBranch: response?.data?.repositoryRedirect?.defaultBranch?.abbrevName,
+    }
+}
+
+interface RevisionParameters {
+    repository: string
+}
+
+interface RevisionResult {
+    data?: {
+        repositoryRedirect?: {
+            id?: string
+            commit?: {
+                oid?: string
+                abbreviatedOID?: string
+                tree?: {
+                    url?: string
+                }
+            }
+            defaultBranch?: {
+                abbrevName?: string
+            }
+        }
+    }
+}

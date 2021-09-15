@@ -6,30 +6,8 @@ export default async function hoverQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<string | undefined> {
-    const response = await graphqlQuery<PositionParameters, HoverResult>(HoverQuery, parameters, token)
-    return response?.data?.repository?.commit?.blob?.lsif?.hover?.markdown?.text
-}
-
-interface HoverResult {
-    data?: {
-        repository?: {
-            commit?: {
-                blob?: {
-                    lsif?: {
-                        hover?: {
-                            markdown?: {
-                                text?: string
-                            }
-                            range?: Range
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-const HoverQuery = `
+    const response = await graphqlQuery<PositionParameters, HoverResult>(
+        `
 query Hover($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
   repository(name: $repository) {
     commit(rev: $revision) {
@@ -55,4 +33,28 @@ query Hover($repository: String!, $revision: String!, $path: String!, $line: Int
     }
   }
 }
-`
+`,
+        parameters,
+        token
+    )
+    return response?.data?.repository?.commit?.blob?.lsif?.hover?.markdown?.text
+}
+
+interface HoverResult {
+    data?: {
+        repository?: {
+            commit?: {
+                blob?: {
+                    lsif?: {
+                        hover?: {
+                            markdown?: {
+                                text?: string
+                            }
+                            range?: Range
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
