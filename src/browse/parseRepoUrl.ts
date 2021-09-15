@@ -98,7 +98,7 @@ export class SourcegraphUri {
             const slash = this.uri.lastIndexOf('/')
             if (slash < 0 || !this.path.includes('/')) {
                 const revision = this.revision ? `@${this.revision}` : ''
-                return `${this.url.protocol}//${this.url.host}/${this.repository}${revision}`
+                return `sourcegraph://${this.url.host}/${this.repository}${revision}`
             }
             const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
             return parent

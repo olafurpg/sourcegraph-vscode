@@ -18,24 +18,27 @@ function checkParent(input: string, expected: string | undefined) {
 }
 
 describe('parseRepoUri', () => {
-    check('https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java', {
+    check('sourcegraph://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java', {
         repository: 'jdk',
         revision: 'v8',
         path: 'java/lang/String.java',
     })
     checkParent(
-        'https://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java',
-        'https://sourcegraph.com/jdk@v8/-/tree/java/lang'
+        'sourcegraph://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java',
+        'sourcegraph://sourcegraph.com/jdk@v8/-/tree/java/lang'
     )
     checkParent(
-        'https://sourcegraph.com/github.com/sourcegraph@v8/-/blob/indexing/dependency_indexing_scheduler_test.go',
-        'https://sourcegraph.com/github.com/sourcegraph@v8/-/tree/indexing'
+        'sourcegraph://sourcegraph.com/github.com/sourcegraph@v8/-/blob/indexing/dependency_indexing_scheduler_test.go',
+        'sourcegraph://sourcegraph.com/github.com/sourcegraph@v8/-/tree/indexing'
     )
     checkParent(
-        'https://sourcegraph.com/github.com/sourcegraph/-/blob/indexing/dependency_indexing_scheduler_test.go#L102:1',
-        'https://sourcegraph.com/github.com/sourcegraph/-/tree/indexing'
+        'sourcegraph://sourcegraph.com/github.com/sourcegraph/-/blob/indexing/dependency_indexing_scheduler_test.go#L102:1',
+        'sourcegraph://sourcegraph.com/github.com/sourcegraph/-/tree/indexing'
     )
-    checkParent('https://sourcegraph.com/jdk@v8/-/tree/java/lang', 'https://sourcegraph.com/jdk@v8/-/tree/java')
-    checkParent('https://sourcegraph.com/jdk@v8/-/tree/java', 'https://sourcegraph.com/jdk@v8')
-    checkParent('https://sourcegraph.com/jdk@v8', undefined)
+    checkParent(
+        'sourcegraph://sourcegraph.com/jdk@v8/-/tree/java/lang',
+        'sourcegraph://sourcegraph.com/jdk@v8/-/tree/java'
+    )
+    checkParent('sourcegraph://sourcegraph.com/jdk@v8/-/tree/java', 'sourcegraph://sourcegraph.com/jdk@v8')
+    checkParent('sourcegraph://sourcegraph.com/jdk@v8', undefined)
 })

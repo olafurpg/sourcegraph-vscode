@@ -45,17 +45,17 @@ function checkChildren(directory: string, expected: string[]) {
     })
 }
 describe('FileTree', () => {
-    checkChildren('src', ['src/browse/', 'src/config.ts', 'src/extension.ts', 'src/git/', 'src/log.ts'])
+    checkChildren('src', ['src/browse/', 'src/git/', 'src/config.ts', 'src/extension.ts', 'src/log.ts'])
     checkChildren('', [
-        '.eslintrc.json',
         '.github/',
-        '.gitignore',
         '.vscode/',
+        'images/',
+        'src/',
+        '.eslintrc.json',
+        '.gitignore',
         '.vscodeignore',
         'README.md',
-        'images/',
         'renovate.json',
-        'src/',
         'tsconfig.json',
     ])
 })
