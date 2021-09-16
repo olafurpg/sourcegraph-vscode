@@ -1,20 +1,21 @@
 import * as vscode from 'vscode'
 import graphqlQuery from './graphqlQuery'
+import gql from 'tagged-template-noop'
 
 export default async function filesQuery(
     parameters: FilesParameters,
     token: vscode.CancellationToken
 ): Promise<string[]> {
     const result = await graphqlQuery<FilesParameters, FilesResult>(
-        `
-query FileNames($repository: String!, $revision: String!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      fileNames
-    }
-  }
-}
-`,
+        gql`
+            query FileNames($repository: String!, $revision: String!) {
+                repository(name: $repository) {
+                    commit(rev: $revision) {
+                        fileNames
+                    }
+                }
+            }
+        `,
         parameters,
         new vscode.CancellationTokenSource().token
     )

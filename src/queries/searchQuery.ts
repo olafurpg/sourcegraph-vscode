@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from '../highlighting/scanner'
 import graphqlQuery from './graphqlQuery'
+import gql from 'tagged-template-noop'
 
 export function searchQueryResult(
     query: string,
@@ -8,34 +9,33 @@ export function searchQueryResult(
     token: vscode.CancellationToken
 ): Promise<SearchResult | undefined> {
     return graphqlQuery<SearchParameters, SearchResult>(
-        `
-query Search($query: String!) {
-  search(query: $query, patternType:${SearchPatternType[patternType]}) {
+        gql`
+            query Search($query: String!) {
+                search(query: $query, patternType: ${SearchPatternType[patternType]}) {
+                    results {
+                        results {
+                            ... on FileMatch {
+                                ...FileMatchFields
+                            }
+                        }
+                        limitHit
+                        matchCount
+                        elapsedMilliseconds
+                    }
+                }
+            }
 
-    results {
-      results {
-        ... on FileMatch {
-          ...FileMatchFields
-        }
-      }
-      limitHit
-      matchCount
-      elapsedMilliseconds
-    }
-  }
-}
-
-fragment FileMatchFields on FileMatch {
-  file {
-    url
-  }
-  lineMatches {
-    lineNumber
-    offsetAndLengths
-    preview
-  }
-}
-`,
+            fragment FileMatchFields on FileMatch {
+                file {
+                    url
+                }
+                lineMatches {
+                    lineNumber
+                    offsetAndLengths
+                    preview
+                }
+            }
+        `,
         { query },
         token
     )

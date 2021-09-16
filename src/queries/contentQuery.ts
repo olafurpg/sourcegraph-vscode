@@ -1,22 +1,23 @@
 import * as vscode from 'vscode'
 import graphqlQuery from './graphqlQuery'
+import gql from 'tagged-template-noop'
 
 export default async function contentQuery(
     parameters: ContentParameters,
     token: vscode.CancellationToken
 ): Promise<string | undefined> {
     const contentResult = await graphqlQuery<ContentParameters, ContentResult>(
-        `
-query Content($repository: String!, $revision: String!, $path: String!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        content
-      }
-    }
-  }
-}
-`,
+        gql`
+            query Content($repository: String!, $revision: String!, $path: String!) {
+                repository(name: $repository) {
+                    commit(rev: $revision) {
+                        blob(path: $path) {
+                            content
+                        }
+                    }
+                }
+            }
+        `,
         parameters,
         token
     )

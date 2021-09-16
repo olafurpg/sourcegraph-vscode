@@ -1,39 +1,40 @@
 import * as vscode from 'vscode'
 import graphqlQuery from './graphqlQuery'
 import PositionParameters from './PositionParameters'
+import gql from 'tagged-template-noop'
 
 export default async function hoverQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<string | undefined> {
     const response = await graphqlQuery<PositionParameters, HoverResult>(
-        `
-query Hover($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
-  repository(name: $repository) {
-    commit(rev: $revision) {
-      blob(path: $path) {
-        lsif {
-          hover(line: $line, character: $character) {
-            markdown {
-              text
+        gql`
+            query Hover($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
+                repository(name: $repository) {
+                    commit(rev: $revision) {
+                        blob(path: $path) {
+                            lsif {
+                                hover(line: $line, character: $character) {
+                                    markdown {
+                                        text
+                                    }
+                                    range {
+                                        start {
+                                            line
+                                            character
+                                        }
+                                        end {
+                                            line
+                                            character
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            range {
-              start {
-                line
-                character
-              }
-              end {
-                line
-                character
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-`,
+        `,
         parameters,
         token
     )
