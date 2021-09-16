@@ -83,7 +83,7 @@ class BrowseQuickPick {
                                 continue
                             }
                             newItems.push({
-                                uri: `${repo.repositoryUri}/-/blob/${file}`,
+                                uri: repo.repositoryUri.withPath(file).uri,
                                 label: file,
                                 detail: repo.repositoryLabel,
                             })
@@ -104,26 +104,31 @@ class BrowseQuickPick {
                 }
             })
             pick.onDidAccept(async () => {
+                if (!selection) {
+                    log.appendLine(`onDidAccept - selection is empty`)
+                    return
+                }
                 pick.busy = true
                 try {
-                    if (selection) {
-                        if (selection.repo) {
-                            if (!selection.uri || !SourcegraphUri.parse(selection.uri).path) {
-                                selection.uri = (await fs.defaultFileUri(selection.repo)).uri
-                            }
-                            const uri = SourcegraphUri.parse(selection.uri)
-                            if (!uri.revision) {
-                                const metadata = await fs.repositoryMetadata(uri.repository)
-                                const revision = metadata?.defaultBranch || 'HEAD'
-                                selection.uri = uri.withRevision(revision).uri
-                            }
+                    if (selection.unresolvedRepositoryName) {
+                        // Update the missing file path if it's missing
+                        if (!selection.uri || !SourcegraphUri.parse(selection.uri).path) {
+                            selection.uri = (await fs.defaultFileUri(selection.unresolvedRepositoryName)).uri
                         }
-                        this.addRecentlyBrowsedFile(selection.uri)
-                        resolve(SourcegraphUri.parse(selection.uri))
-                        pick.dispose()
+
+                        // Update the missing revision if it's missing
+                        const uri = SourcegraphUri.parse(selection.uri)
+                        if (!uri.revision) {
+                            const metadata = await fs.repositoryMetadata(uri.repositoryName)
+                            const revision = metadata?.defaultBranch || 'HEAD'
+                            selection.uri = uri.withRevision(revision).uri
+                        }
                     }
+                    this.addRecentlyBrowsedFile(selection.uri)
+                    resolve(SourcegraphUri.parse(selection.uri))
+                    pick.dispose()
                 } catch (error) {
-                    log.appendLine(`ERROR selection ${error} ${JSON.stringify(selection)}`)
+                    log.appendLine(`ERROR onDidAccept error=${error} selection=${JSON.stringify(selection)}`)
                 }
             })
             pick.onDidHide(() => {
@@ -144,7 +149,7 @@ class BrowseQuickPick {
 
 interface BrowseQuickPickItem extends vscode.QuickPickItem {
     uri: string
-    repo?: string
+    unresolvedRepositoryName?: string
 }
 
 function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
@@ -153,9 +158,9 @@ function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
         return {
             uri: uri.uri,
             label: uri.path,
-            description: uri.repository,
+            description: uri.repositoryName,
             detail: value,
-            repo: uri.repository,
+            unresolvedRepositoryName: uri.repositoryName,
         }
     }
     return undefined

@@ -1,10 +1,10 @@
 import assert from 'assert'
 import SourcegraphUri from './SourcegraphUri'
 
-function check(input: string, expected: { repository: string; revision: string; path: string }) {
+function check(input: string, expected: { repositoryName: string; revision: string; path: string }) {
     it(`parseBrowserRepoURL('${input})'`, () => {
         const obtained = SourcegraphUri.parse(input)
-        assert.deepStrictEqual(obtained.repository, expected.repository)
+        assert.deepStrictEqual(obtained.repositoryName, expected.repositoryName)
         assert.deepStrictEqual(obtained.revision, expected.revision)
         assert.deepStrictEqual(obtained.path, expected.path)
     })
@@ -19,7 +19,7 @@ function checkParent(input: string, expected: string | undefined) {
 
 describe('parseRepoUri', () => {
     check('sourcegraph://sourcegraph.com/jdk@v8/-/blob/java/lang/String.java', {
-        repository: 'jdk',
+        repositoryName: 'jdk',
         revision: 'v8',
         path: 'java/lang/String.java',
     })

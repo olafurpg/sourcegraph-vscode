@@ -39,7 +39,6 @@ function parseMarkdownParts(content: string): MarkdownPart[] {
             while (i < lines.length) {
                 const queryLine = lines[i]
                 if (queryLine.startsWith('```')) {
-                    console.log(`startBack=${line} endBack=${queryLine}`)
                     result.push(new MarkdownPart(MarkdownPartKind.CodeFence, query.join('\n'), line, queryLine))
                     isEmittedPart = true
                     break

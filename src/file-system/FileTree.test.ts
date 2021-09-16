@@ -34,10 +34,10 @@ function checkChildren(directory: string, expected: string[]) {
     it(`directChildren('${directory}')`, () => {
         const childUris = tree.directChildren(directory)
         const obtained: string[] = []
-        for (const uri of childUris) {
-            const uri = SourcegraphUri.parse(uri)
+        for (const childUri of childUris) {
+            const uri = SourcegraphUri.parse(childUri)
             if (uri.path) {
-                const path = uri.includes('/tree/') ? uri.path + `/` : uri.path
+                const path = uri.isDirectory() ? uri.path + `/` : uri.path
                 obtained.push(path)
             }
         }

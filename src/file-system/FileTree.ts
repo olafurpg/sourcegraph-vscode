@@ -27,19 +27,17 @@ export class FileTree {
         if (!isRoot && !directory.endsWith('/')) {
             directory = directory + '/'
         }
-        // console.log(`DIRECTORY=${directory}`)
         for (const file of this.files) {
             if (file === '') {
                 continue
             }
-            // console.log(`file=${file} startsWith=${file.startsWith(directory)}`)
             if (file.startsWith(directory)) {
                 const revision = this.uri.revision ? `@${this.uri.revision}` : ''
                 const fileDepth = this.depth(file)
                 const isDirect = isRoot ? fileDepth === 0 : fileDepth === depth + 1
                 const path = isDirect ? file : file.slice(0, file.indexOf('/', directory.length))
                 const kind = isDirect ? 'blob' : 'tree'
-                const uri = `sourcegraph://${this.uri.url.host}/${this.uri.repository}${revision}/-/${kind}/${path}`
+                const uri = `sourcegraph://${this.uri.url.host}/${this.uri.repositoryName}${revision}/-/${kind}/${path}`
                 if (isDirect) directFiles.add(uri)
                 else directDirectories.add(uri)
             }

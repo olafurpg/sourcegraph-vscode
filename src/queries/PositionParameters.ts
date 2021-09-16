@@ -1,5 +1,5 @@
 export default interface PositionParameters {
-    repository: string
+    repositoryName: string
     revision: string
     path: string
     line: number

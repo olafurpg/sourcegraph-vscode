@@ -10,15 +10,15 @@ export default async function openSourcegraphUriCommand(uri: SourcegraphUri): Pr
     })
 }
 
-function getSelection(parsed: SourcegraphUri, textDocument: vscode.TextDocument): vscode.Range | undefined {
-    if (typeof parsed?.position?.line !== 'undefined' && typeof parsed?.position?.character !== 'undefined') {
-        return offsetRange(parsed.position.line - 1, parsed.position.character)
+function getSelection(uri: SourcegraphUri, textDocument: vscode.TextDocument): vscode.Range | undefined {
+    if (typeof uri?.position?.line !== 'undefined' && typeof uri?.position?.character !== 'undefined') {
+        return offsetRange(uri.position.line - 1, uri.position.character)
     }
-    if (typeof parsed?.position?.line !== 'undefined') {
-        return offsetRange(parsed.position.line - 1, 0)
+    if (typeof uri?.position?.line !== 'undefined') {
+        return offsetRange(uri.position.line - 1, 0)
     }
-    if (parsed.path && isSymbolicFilename(parsed.path)) {
-        const fileNames = parsed.path.split('/')
+    if (uri.path && isSymbolicFilename(uri.path)) {
+        const fileNames = uri.path.split('/')
         const fileName = fileNames[fileNames.length - 1]
         const symbolName = fileName.split('.')[0]
         const text = textDocument.getText()

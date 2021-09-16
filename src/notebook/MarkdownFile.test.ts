@@ -6,7 +6,6 @@ function checkRoundtrip(name: string, input: string) {
         const original = input.replace(/'''/g, '```')
         const file = MarkdownFile.parseContent(original)
         const obtained = file.renderAsString()
-        console.log(obtained)
         assert.deepStrictEqual(obtained, original)
     })
 }

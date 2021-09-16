@@ -1,26 +1,32 @@
 import { URL, URLSearchParams } from 'url'
-import { Position, Range } from '../queries/Range'
+import { Position } from '../queries/Range'
 
 export default class SourcegraphUri {
     private constructor(
         public readonly uri: string,
         public readonly url: URL,
-        public readonly repository: string,
+        public readonly repositoryName: string,
         public readonly revision: string | undefined,
         public readonly path: string | undefined,
-        public readonly rawRevision: string | undefined,
-        public readonly commitRange: string | undefined,
-        public readonly commitID: string | undefined,
-        public readonly position: Position | undefined,
-        public readonly range: Range | undefined
+        public readonly position: Position | undefined
     ) {}
 
     public withRevision(newRevision: string | undefined): SourcegraphUri {
         const newRevisionPath = newRevision ? `@${newRevision}` : ''
-        return SourcegraphUri.parse(`sourcegraph://${this.url.host}/${this.repository}@${newRevisionPath}/${this.path}`)
+        return SourcegraphUri.parse(
+            `sourcegraph://${this.url.host}/${this.repositoryName}@${newRevisionPath}/${this.path}`
+        )
     }
     public withPath(newPath: string): SourcegraphUri {
         return SourcegraphUri.parse(`${this.repositoryUri()}/${newPath}`)
+    }
+
+    public isDirectory(): boolean {
+        return typeof this.path === 'string' && this.uri.includes('/-/tree/')
+    }
+
+    public isFile(): boolean {
+        return typeof this.path === 'string' && this.uri.includes('/-/blob/')
     }
 
     public static fromParts(
@@ -33,6 +39,7 @@ export default class SourcegraphUri {
         const pathPath = path ? `/-/blob/${path}` : ''
         return SourcegraphUri.parse(`sourcegraph://${host}/${repository}${revisionPath}${pathPath}`)
     }
+
     public static parse(uri: string): SourcegraphUri {
         uri = uri.replace('https://', 'sourcegraph://')
         const url = new URL(uri.replace('sourcegraph://', 'https://'))
@@ -56,25 +63,24 @@ export default class SourcegraphUri {
         } else {
             repoRevision = pathname.slice(0, indexOfSeparator) // the whole string leading up to the separator (allows revision to be multiple path parts)
         }
-        const { repository, revision, rawRevision } = parseRepoRevision(repoRevision)
-        const commitID = revision && /^[\da-f]{40}$/i.test(revision) ? revision : undefined
+        const { repository, revision } = parseRepoRevision(repoRevision)
 
         let path: string | undefined
-        let commitRange: string | undefined
+        // let commitRange: string | undefined
         const treeSeparator = pathname.indexOf('/-/tree/')
         const blobSeparator = pathname.indexOf('/-/blob/')
-        const comparisonSeparator = pathname.indexOf('/-/compare/')
+        // const comparisonSeparator = pathname.indexOf('/-/compare/')
         if (treeSeparator !== -1) {
             path = decodeURIComponent(pathname.slice(treeSeparator + '/-/tree/'.length))
         }
         if (blobSeparator !== -1) {
             path = decodeURIComponent(pathname.slice(blobSeparator + '/-/blob/'.length))
         }
-        if (comparisonSeparator !== -1) {
-            commitRange = pathname.slice(comparisonSeparator + '/-/compare/'.length)
-        }
+        // if (comparisonSeparator !== -1) {
+        //     commitRange = pathname.slice(comparisonSeparator + '/-/compare/'.length)
+        // }
         let position: Position | undefined
-        let range: Range | undefined
+        // let range: Range | undefined
 
         const parsedHash = parseQueryAndHash(url.search, url.hash)
         if (parsedHash.line) {
@@ -82,32 +88,21 @@ export default class SourcegraphUri {
                 line: parsedHash.line,
                 character: parsedHash.character || 0,
             }
-            if (parsedHash.endLine) {
-                range = {
-                    start: position,
-                    end: {
-                        line: parsedHash.endLine,
-                        character: parsedHash.endCharacter || 0,
-                    },
-                }
-            }
+            // if (parsedHash.endLine) {
+            //     range = {
+            //         start: position,
+            //         end: {
+            //             line: parsedHash.endLine,
+            //             character: parsedHash.endCharacter || 0,
+            //         },
+            //     }
+            // }
         }
-        return new SourcegraphUri(
-            uri,
-            url,
-            repository,
-            revision,
-            path,
-            rawRevision,
-            commitRange,
-            commitID,
-            position,
-            range
-        )
+        return new SourcegraphUri(uri, url, repository, revision, path, position)
     }
 
     public repositoryUri(): string {
-        return `sourcegraph://${this.url.host}/${this.repository}${this.revisionPath()}`
+        return `sourcegraph://${this.url.host}/${this.repositoryName}${this.revisionPath()}`
     }
     public revisionPath(): string {
         return this.revision ? `@${this.revision}` : ''
@@ -117,7 +112,7 @@ export default class SourcegraphUri {
             const slash = this.uri.lastIndexOf('/')
             if (slash < 0 || !this.path.includes('/')) {
                 const revision = this.revision ? `@${this.revision}` : ''
-                return `sourcegraph://${this.url.host}/${this.repository}${revision}`
+                return `sourcegraph://${this.url.host}/${this.repositoryName}${revision}`
             }
             const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
             return parent
