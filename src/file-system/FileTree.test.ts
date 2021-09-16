@@ -1,6 +1,7 @@
 import assert from 'assert'
 import { FileTree } from './FileTree'
 import SourcegraphUri from './SourcegraphUri'
+
 const tree = new FileTree(SourcegraphUri.parse('https://sourcegraph.com/sourcegraph-vscode@v8'), [
     '.eslintrc.json',
     '.github/workflows/build.yml',

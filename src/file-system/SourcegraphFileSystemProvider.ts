@@ -80,7 +80,7 @@ export class SourcegraphFileSystemProvider
     private async didFocusString(uri: SourcegraphUri, isDestinationNode: boolean): Promise<void> {
         try {
             if (this.treeView) {
-                const parent = uri.parent()
+                const parent = uri.dirname()
                 if (parent && !this.isExpandedNode.has(parent)) {
                     await this.didFocusString(SourcegraphUri.parse(parent), false)
                 }
@@ -96,7 +96,7 @@ export class SourcegraphFileSystemProvider
     }
     private async treeItemLabel(uri: SourcegraphUri): Promise<string> {
         if (uri.path) {
-            return uri.filename()
+            return uri.basename()
         }
         const metadata = await this.repositoryMetadata(uri.repositoryName, emptyCancelationToken())
         let revision = uri.revision
@@ -137,7 +137,7 @@ export class SourcegraphFileSystemProvider
         uri: SourcegraphUri,
         isDirectory: boolean
     ): Promise<vscode.TreeItemCollapsibleState> {
-        const parent = uri.parent()
+        const parent = uri.dirname()
         if (isDirectory && parent) {
             const parentUri = SourcegraphUri.parse(parent)
             if (parentUri.path) {
@@ -186,7 +186,7 @@ export class SourcegraphFileSystemProvider
         }
     }
     public getParent(uriString: string): string | undefined {
-        return SourcegraphUri.parse(uriString).parent()
+        return SourcegraphUri.parse(uriString).dirname()
     }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
@@ -327,7 +327,7 @@ export class SourcegraphFileSystemProvider
         return children.map(childUri => {
             const child = SourcegraphUri.parse(childUri)
             const type = child.isDirectory() ? vscode.FileType.Directory : vscode.FileType.File
-            return [child.filename(), type]
+            return [child.basename(), type]
         })
     }
 

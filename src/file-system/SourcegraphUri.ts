@@ -1,11 +1,13 @@
 import { URL, URLSearchParams } from 'url'
-import { log } from '../log'
 import { Position } from '../queries/Range'
 
+/**
+ * SourcegraphUri encodes a URI like `sourcegraph://HOST/REPOSITORY@REVISION/-/blob/PATH?L1337`.
+ */
 export default class SourcegraphUri {
     private constructor(
         public readonly uri: string,
-        public readonly url: URL,
+        public readonly host: string,
         public readonly repositoryName: string,
         public readonly revision: string | undefined,
         public readonly path: string | undefined,
@@ -14,17 +16,29 @@ export default class SourcegraphUri {
 
     public withRevision(newRevision: string | undefined): SourcegraphUri {
         const newRevisionPath = newRevision ? `@${newRevision}` : ''
-        return SourcegraphUri.parse(
-            `sourcegraph://${this.url.host}/${this.repositoryName}@${newRevisionPath}/${this.path}`
-        )
-    }
-    public withPath(newPath: string): SourcegraphUri {
-        return SourcegraphUri.parse(`${this.repositoryUri()}/${newPath}`)
+        return SourcegraphUri.parse(`sourcegraph://${this.host}/${this.repositoryName}@${newRevisionPath}/${this.path}`)
     }
 
-    public filename(): string {
+    public withPath(newPath: string): SourcegraphUri {
+        return SourcegraphUri.parse(`${this.repositoryUri()}/-/blob/${newPath}`)
+    }
+
+    public basename(): string {
         const parts = (this.path || '').split('/')
         return parts[parts.length - 1]
+    }
+
+    public dirname(): string | undefined {
+        if (typeof this.path === 'string') {
+            const slash = this.uri.lastIndexOf('/')
+            if (slash < 0 || !this.path.includes('/')) {
+                const revision = this.revision ? `@${this.revision}` : ''
+                return `sourcegraph://${this.host}/${this.repositoryName}${revision}`
+            }
+            const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
+            return parent
+        }
+        return undefined
     }
 
     public isDirectory(): boolean {
@@ -45,48 +59,16 @@ export default class SourcegraphUri {
         const pathPath = path ? `/-/blob/${path}` : ''
         return SourcegraphUri.parse(`sourcegraph://${host}/${repository}${revisionPath}${pathPath}`)
     }
-
-    public static isValid(uri: string): boolean {
-        try {
-            SourcegraphUri.parseUri(uri)
-            return true
-        } catch (_error) {
-            return false
-        }
-    }
-    public static parse(uri: string): SourcegraphUri {
-        try {
-            return SourcegraphUri.parseUri(uri)
-        } catch (error) {
-            if (error instanceof Error) {
-                log.appendLine(`ERROR SourcegraphUri.parse uri=${uri} error=${error} error.stack=${error.stack}`)
-            }
-            throw error
-        }
-    }
-
     public repositoryUri(): string {
-        return `sourcegraph://${this.url.host}/${this.repositoryName}${this.revisionPath()}`
+        return `sourcegraph://${this.host}/${this.repositoryName}${this.revisionPath()}`
     }
     public revisionPath(): string {
         return this.revision ? `@${this.revision}` : ''
     }
-    public parent(): string | undefined {
-        if (typeof this.path === 'string') {
-            const slash = this.uri.lastIndexOf('/')
-            if (slash < 0 || !this.path.includes('/')) {
-                const revision = this.revision ? `@${this.revision}` : ''
-                return `sourcegraph://${this.url.host}/${this.repositoryName}${revision}`
-            }
-            const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
-            return parent
-        }
-        return undefined
-    }
 
     // NOTE: The code below is copy-pasted from the sourcegraph/sourcegraph repository
     // https://sourcegraph.com/github.com/sourcegraph/sourcegraph@56dfaaa3e3172f9afd4a29a4780a7f1a34198238/-/blob/client/shared/src/util/url.ts?L287
-    private static parseUri(uri: string): SourcegraphUri {
+    public static parse(uri: string): SourcegraphUri {
         uri = uri.replace('https://', 'sourcegraph://')
         const url = new URL(uri.replace('sourcegraph://', 'https://'))
         let pathname = url.pathname.slice(1) // trim leading '/'
@@ -144,7 +126,7 @@ export default class SourcegraphUri {
             //     }
             // }
         }
-        return new SourcegraphUri(uri, url, repository, revision, path, position)
+        return new SourcegraphUri(uri, url.host, repository, revision, path, position)
     }
 }
 

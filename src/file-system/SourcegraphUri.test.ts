@@ -12,7 +12,7 @@ function check(input: string, expected: { repositoryName: string; revision: stri
 
 function checkParent(input: string, expected: string | undefined) {
     it(`checkParent('${input}')`, () => {
-        const obtained = SourcegraphUri.parse(input).parent()
+        const obtained = SourcegraphUri.parse(input).dirname()
         assert.deepStrictEqual(obtained, expected)
     })
 }

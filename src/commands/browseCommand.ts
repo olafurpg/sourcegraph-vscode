@@ -81,7 +81,7 @@ class BrowseQuickPick {
                     pick.busy = true
                     const allFiles = await fs.allFileFromOpenRepositories()
                     pick.busy = false
-                    const newItems: BrowseQuickPickItem[] = [...this.recentlyBrowsedItems]
+                    const newItems: BrowseQuickPickItem[] = []
                     for (const repo of allFiles) {
                         for (const file of repo.fileNames) {
                             if (file === '') {
