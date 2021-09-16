@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { TextEncoder } from 'util'
 import * as vscode from 'vscode'
 import SourcegraphUri from './SourcegraphUri'
 import { searchQuery } from '../queries/searchQuery'
@@ -10,7 +9,7 @@ import filesQuery from '../queries/filesQuery'
 import definitionQuery from '../queries/definitionQuery'
 import LocationNode from '../queries/LocationNode'
 import repositoryMetadataQuery, { RepositoryMetadata } from '../queries/repositoryMetadataQuery'
-import contentQuery from '../queries/contentQuery'
+import contents from '../queries/contentQuery'
 import hoverQuery from '../queries/hoverQuery'
 import referencesQuery from '../queries/referencesQuery'
 
@@ -85,7 +84,6 @@ export class SourcegraphFileSystemProvider
                 if (parent && !this.isExpandedNode.has(parent)) {
                     await this.didFocusString(SourcegraphUri.parse(parent), false)
                 }
-                // log.appendLine(`FOCUS: uri=${uri} isDestinationNode=${isDestinationNode}`)
                 await this.treeView.reveal(uri.uri, {
                     focus: true,
                     select: isDestinationNode,
@@ -93,18 +91,15 @@ export class SourcegraphFileSystemProvider
                 })
             }
         } catch (error) {
-            log.appendLine(`ERROR: didFocusString(${uri}) error=${error}`)
+            log.appendLine(`ERROR: didFocusString(${uri.uri}) error=${error}`)
         }
     }
     private async treeItemLabel(uri: SourcegraphUri): Promise<string> {
         if (uri.path) {
-            return filename(uri.path)
+            return uri.filename()
         }
         const metadata = await this.repositoryMetadata(uri.repositoryName, emptyCancelationToken())
         let revision = uri.revision
-        // log.appendLine(
-        //     `TREE_ITEM_LABEL ${uri.revision} defaultOid=${metadata?.defaultOid} defaultBranch=${metadata?.defaultBranch}`
-        // )
         if (metadata?.defaultBranch && (!revision || revision === metadata?.defaultOid)) {
             revision = metadata.defaultBranch
         }
@@ -114,7 +109,6 @@ export class SourcegraphFileSystemProvider
     public async getTreeItem(uriString: string): Promise<vscode.TreeItem> {
         const uri = SourcegraphUri.parse(uriString)
         try {
-            // log.appendLine(`getTreeItem ${id} blob.type=${vscode.FileType[blob.type]} command=${JSON.stringify(command)}`)
             const label = await this.treeItemLabel(uri)
             const isFile = uri.uri.includes('/-/blob/')
             const isDirectory = !isFile
@@ -160,19 +154,16 @@ export class SourcegraphFileSystemProvider
         if (!uri.revision) {
             uri = uri.withRevision(this.metadata.get(uri.repositoryName)?.defaultBranch)
         }
-        const downloadingKey = uri.repositoryUri()
-        const downloading = this.fileNamesByRepositoryUri.get(downloadingKey)
+        const key = uri.repositoryUri()
+        const downloading = this.fileNamesByRepositoryUri.get(key)
         if (!downloading) {
-            log.appendLine(
-                `getFileTree - empty downloading key=${downloadingKey} keys=${JSON.stringify([
-                    ...this.fileNamesByRepositoryUri.keys(),
-                ])}`
-            )
+            const keys = JSON.stringify([...this.fileNamesByRepositoryUri.keys()])
+            log.appendLine(`ERROR getFileTree(${uri.uri}) - empty downloading key=${key} keys=${keys}`)
             return Promise.resolve(undefined)
         }
         const files = await downloading
         if (!files) {
-            log.appendLine(`getFileTree - empty files`)
+            log.appendLine(`ERROR getFileTree - empty files`)
             return Promise.resolve(undefined)
         }
         // log.appendLine(`new FileTree(${JSON.stringify(files)})`)
@@ -213,7 +204,6 @@ export class SourcegraphFileSystemProvider
             })
             .join(' OR ')
         const query = `(${repos}) AND ${document.getText()}`
-        log.appendLine(`QUERY ${query}`)
         return await searchQuery(SRC_ENDPOINT_HOST, query, SearchPatternType.literal, token)
     }
 
@@ -307,7 +297,7 @@ export class SourcegraphFileSystemProvider
             return {
                 mtime: blob.time,
                 ctime: blob.time,
-                size: blob.content.length,
+                size: blob.byteSize,
                 type: blob.type,
             }
         } catch (error) {
@@ -334,11 +324,10 @@ export class SourcegraphFileSystemProvider
             return []
         }
         const children = tree.directChildren(uri.path || '')
-        return children.map(child => {
-            const isDirectory = child.includes('/-/tree/')
-            const type = isDirectory ? vscode.FileType.Directory : vscode.FileType.File
-            const name = filename(child)
-            return [name, type]
+        return children.map(childUri => {
+            const child = SourcegraphUri.parse(childUri)
+            const type = child.isDirectory() ? vscode.FileType.Directory : vscode.FileType.File
+            return [child.filename(), type]
         })
     }
 
@@ -363,8 +352,8 @@ export class SourcegraphFileSystemProvider
     }
 
     public async defaultFileUri(repository: string): Promise<SourcegraphUri> {
-        const token = new vscode.CancellationTokenSource()
-        const defaultBranch = (await this.repositoryMetadata(repository, token.token))?.defaultBranch
+        const token = emptyCancelationToken()
+        const defaultBranch = (await this.repositoryMetadata(repository, token))?.defaultBranch
         if (!defaultBranch) {
             const message = `ERROR defaultBranch no repository '${repository}'`
             log.appendLine(message)
@@ -396,28 +385,32 @@ export class SourcegraphFileSystemProvider
             return result
         }
         await this.repositoryMetadata(uri.repositoryName)
-        const token = new vscode.CancellationTokenSource()
-        const revision = uri.revision || (await this.repositoryMetadata(uri.repositoryName, token.token))?.defaultBranch
+        const token = emptyCancelationToken()
+        const revision = uri.revision || (await this.repositoryMetadata(uri.repositoryName, token))?.defaultBranch
         if (!revision) {
             throw new Error(`no uri.revision from uri ${uri.uri}`)
         }
         const path = uri.path || ''
-        const content = await contentQuery(
+        const content = await contents(
             {
                 repository: uri.repositoryName,
                 revision: revision,
                 path: path,
             },
-            token.token
+            token
         )
+
+        // Start downloading the files for this repository in the background.
         this.downloadFiles(uri, revision)
+
         if (content) {
-            const encoder = new TextEncoder()
             const toCacheResult: Blob = {
                 uri: uri.uri,
                 repositoryName: uri.repositoryName,
                 revision: revision,
-                content: encoder.encode(content),
+                content: content.content,
+                isBinaryFile: content.isBinary,
+                byteSize: content.byteSize,
                 path: path,
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
@@ -425,8 +418,8 @@ export class SourcegraphFileSystemProvider
             this.updateCache(toCacheResult)
             return toCacheResult
         }
-        log.appendLine(`no blob result for ${uri.toString()}`)
-        throw new Error(`Not found '${uri.toString()}'`)
+        log.appendLine(`ERROR fetchBlob(${uri.uri}) not found`)
+        throw new Error(`Not found '${uri.uri}'`)
     }
 
     private updateCache(blob: Blob) {
@@ -460,10 +453,7 @@ export class SourcegraphFileSystemProvider
         const key = uri.repositoryUri()
         let downloadingFiles = this.fileNamesByRepositoryUri.get(key)
         if (!downloadingFiles) {
-            downloadingFiles = filesQuery(
-                { repository: uri.repositoryName, revision },
-                new vscode.CancellationTokenSource().token
-            )
+            downloadingFiles = filesQuery({ repository: uri.repositoryName, revision }, emptyCancelationToken())
             this.fileNamesByRepositoryUri.set(key, downloadingFiles)
         }
         return downloadingFiles
@@ -480,15 +470,12 @@ interface Blob {
     revision: string
     path: string
     content: Uint8Array
+    isBinaryFile: boolean
+    byteSize: number
     time: number
     type: vscode.FileType
 }
 
 function emptyCancelationToken(): vscode.CancellationToken {
     return new vscode.CancellationTokenSource().token
-}
-
-function filename(path: string): string {
-    const parts = path.split('/')
-    return parts[parts.length - 1]
 }

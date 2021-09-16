@@ -1,4 +1,5 @@
 import { URL, URLSearchParams } from 'url'
+import { log } from '../log'
 import { Position } from '../queries/Range'
 
 export default class SourcegraphUri {
@@ -21,6 +22,11 @@ export default class SourcegraphUri {
         return SourcegraphUri.parse(`${this.repositoryUri()}/${newPath}`)
     }
 
+    public filename(): string {
+        const parts = (this.path || '').split('/')
+        return parts[parts.length - 1]
+    }
+
     public isDirectory(): boolean {
         return typeof this.path === 'string' && this.uri.includes('/-/tree/')
     }
@@ -40,7 +46,47 @@ export default class SourcegraphUri {
         return SourcegraphUri.parse(`sourcegraph://${host}/${repository}${revisionPath}${pathPath}`)
     }
 
+    public static isValid(uri: string): boolean {
+        try {
+            SourcegraphUri.parseUri(uri)
+            return true
+        } catch (_error) {
+            return false
+        }
+    }
     public static parse(uri: string): SourcegraphUri {
+        try {
+            return SourcegraphUri.parseUri(uri)
+        } catch (error) {
+            if (error instanceof Error) {
+                log.appendLine(`ERROR SourcegraphUri.parse uri=${uri} error=${error} error.stack=${error.stack}`)
+            }
+            throw error
+        }
+    }
+
+    public repositoryUri(): string {
+        return `sourcegraph://${this.url.host}/${this.repositoryName}${this.revisionPath()}`
+    }
+    public revisionPath(): string {
+        return this.revision ? `@${this.revision}` : ''
+    }
+    public parent(): string | undefined {
+        if (typeof this.path === 'string') {
+            const slash = this.uri.lastIndexOf('/')
+            if (slash < 0 || !this.path.includes('/')) {
+                const revision = this.revision ? `@${this.revision}` : ''
+                return `sourcegraph://${this.url.host}/${this.repositoryName}${revision}`
+            }
+            const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
+            return parent
+        }
+        return undefined
+    }
+
+    // NOTE: The code below is copy-pasted from the sourcegraph/sourcegraph repository
+    // https://sourcegraph.com/github.com/sourcegraph/sourcegraph@56dfaaa3e3172f9afd4a29a4780a7f1a34198238/-/blob/client/shared/src/util/url.ts?L287
+    private static parseUri(uri: string): SourcegraphUri {
         uri = uri.replace('https://', 'sourcegraph://')
         const url = new URL(uri.replace('sourcegraph://', 'https://'))
         let pathname = url.pathname.slice(1) // trim leading '/'
@@ -100,29 +146,7 @@ export default class SourcegraphUri {
         }
         return new SourcegraphUri(uri, url, repository, revision, path, position)
     }
-
-    public repositoryUri(): string {
-        return `sourcegraph://${this.url.host}/${this.repositoryName}${this.revisionPath()}`
-    }
-    public revisionPath(): string {
-        return this.revision ? `@${this.revision}` : ''
-    }
-    public parent(): string | undefined {
-        if (typeof this.path === 'string') {
-            const slash = this.uri.lastIndexOf('/')
-            if (slash < 0 || !this.path.includes('/')) {
-                const revision = this.revision ? `@${this.revision}` : ''
-                return `sourcegraph://${this.url.host}/${this.repositoryName}${revision}`
-            }
-            const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
-            return parent
-        }
-        return undefined
-    }
 }
-
-// NOTE: The code below is copy-pasted from the sourcegraph/sourcegraph repository
-// https://sourcegraph.com/github.com/sourcegraph/sourcegraph@56dfaaa3e3172f9afd4a29a4780a7f1a34198238/-/blob/client/shared/src/util/url.ts?L287
 
 /**
  * Represents a line, a position, a line range, or a position range. It forbids

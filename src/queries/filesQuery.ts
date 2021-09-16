@@ -17,7 +17,7 @@ export default async function filesQuery(
             }
         `,
         parameters,
-        new vscode.CancellationTokenSource().token
+        token
     )
     return result?.data?.repository?.commit?.fileNames || []
 }

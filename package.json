@@ -153,6 +153,11 @@
           "default": "",
           "description": "Always open files at this default branch."
         },
+        "sourcegraph.debug": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "If true, log detailed troubleshooting information to the Sourcegraph output channel."
+        },
         "sourcegraph.recentlyBrowsedFiles": {
           "type": "array",
           "items": {

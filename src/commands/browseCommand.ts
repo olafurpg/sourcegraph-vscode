@@ -23,11 +23,16 @@ class BrowseQuickPick {
     private recentlyBrowsedUris: string[] = this.config.get<string[]>(RECENTLY_BROWSED_FILES_KEY, [])
     private recentlyBrowsedItems: BrowseQuickPickItem[] = []
     constructor() {
-        for (const file of this.recentlyBrowsedUris) {
-            const item = browseQuickPickItem(file)
+        const validUris: string[] = []
+        for (const uri of this.recentlyBrowsedUris) {
+            const item = browseQuickPickItem(uri)
             if (item) {
+                validUris.push(uri)
                 this.recentlyBrowsedItems.push(item)
             }
+        }
+        if (validUris.length !== this.recentlyBrowsedUris.length) {
+            this.config.update(RECENTLY_BROWSED_FILES_KEY, validUris, vscode.ConfigurationTarget.Global)
         }
     }
 
@@ -65,8 +70,8 @@ class BrowseQuickPick {
                     if (!pendingRequests.token.isCancellationRequested) {
                         pick.items = repos.map(repo => ({
                             label: `repo:${repo}`,
-                            uri: ``,
-                            repo,
+                            uri: '',
+                            unresolvedRepositoryName: repo,
                         }))
                         isAllFilesEnabled = false
                         pick.busy = false
@@ -128,6 +133,7 @@ class BrowseQuickPick {
                     resolve(SourcegraphUri.parse(selection.uri))
                     pick.dispose()
                 } catch (error) {
+                    pick.busy = false
                     log.appendLine(`ERROR onDidAccept error=${error} selection=${JSON.stringify(selection)}`)
                 }
             })
@@ -153,15 +159,17 @@ interface BrowseQuickPickItem extends vscode.QuickPickItem {
 }
 
 function browseQuickPickItem(value: string): BrowseQuickPickItem | undefined {
-    const uri = SourcegraphUri.parse(value)
-    if (uri.path) {
-        return {
-            uri: uri.uri,
-            label: uri.path,
-            description: uri.repositoryName,
-            detail: value,
-            unresolvedRepositoryName: uri.repositoryName,
+    try {
+        const uri = SourcegraphUri.parse(value)
+        if (uri.path) {
+            return {
+                uri: uri.uri,
+                label: uri.path,
+                description: uri.repositoryName,
+                detail: value,
+                unresolvedRepositoryName: uri.repositoryName,
+            }
         }
-    }
+    } catch (_error) {}
     return undefined
 }

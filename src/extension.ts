@@ -15,6 +15,8 @@ import SourcegraphUri from './file-system/SourcegraphUri'
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
 
+export const IS_DEBUG_ENABLED = vscode.workspace.getConfiguration('sourcegraph').get<boolean>('debug', false)
+
 /**
  * Displays an error message to the user.
  */
@@ -118,9 +120,10 @@ export function activate(context: vscode.ExtensionContext): void {
     )
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', uri => {
-            log.appendLine(`OPEN_FILE ${uri}`)
             if (typeof uri === 'string') {
                 openSourcegraphUriCommand(SourcegraphUri.parse(uri))
+            } else {
+                log.appendLine(`ERROR extension.openFile(${uri}) argument is not a string`)
             }
         })
     )

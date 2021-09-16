@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
+import { IS_DEBUG_ENABLED } from '../extension'
 import { log } from '../log'
 
 export default function graphqlQuery<A, B>(
@@ -25,8 +26,16 @@ export default function graphqlQuery<A, B>(
         const onData = (chunk: string) => {
             stdoutBuffer.push(chunk)
         }
-        const command: string[] = ['api', '-query', query.replace(/\n/g, ' '), '-vars', JSON.stringify(variables)]
-        log.appendLine('src ' + command.map(part => `'${part}'`).join(' '))
+        const command: string[] = [
+            'api',
+            '-query',
+            query.trim().replace(/\n/g, ' ').replace(/ +/g, ' '),
+            '-vars',
+            JSON.stringify(variables),
+        ]
+        if (IS_DEBUG_ENABLED) {
+            log.appendLine('src ' + command.map(part => `'${part}'`).join(' '))
+        }
         const proc = spawn('src', command)
         proc.stdout.on('data', onData)
         proc.on('close', onExit)
