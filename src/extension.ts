@@ -4,13 +4,14 @@ import { getSourcegraphUrl } from './config'
 import { repoInfo } from './git'
 import { SourcegraphFileSystemProvider } from './file-system/SourcegraphFileSystemProvider'
 import { SourcegraphSemanticTokenProvider } from './highlighting/SourcegraphSemanticTokenProvider'
-import browseCommand from './commands/browseCommand'
+import browseFileCommand from './commands/browseFileCommand'
 import createNewNotebookCommand from './commands/createNewNotebookCommand'
 import openSourcegraphUriCommand from './commands/openSourcegraphUriCommand'
 import { SourcegraphCompletionItemProvider } from './notebook/SourcegraphCompletionItemProvider'
 import { SourcegraphNotebookSerializer } from './notebook/SourcegraphNotebookSerializer'
 import { log } from './log'
 import SourcegraphUri from './file-system/SourcegraphUri'
+import browseRepositoryCommand from './commands/browseRepositoryCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
@@ -114,7 +115,10 @@ export function activate(context: vscode.ExtensionContext): void {
     fs.setTreeView(treeView)
     const semanticTokens = new SourcegraphSemanticTokenProvider()
     context.subscriptions.push(treeView)
-    context.subscriptions.push(vscode.commands.registerCommand('extension.browse', () => browseCommand(fs)))
+    context.subscriptions.push(vscode.commands.registerCommand('extension.browseFile', () => browseFileCommand(fs)))
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.browseRepository', () => browseRepositoryCommand(fs))
+    )
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.createNewNotebook', () => createNewNotebookCommand())
     )

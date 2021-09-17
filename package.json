@@ -21,7 +21,8 @@
     "onFileSystem:sourcegraph",
     "onLanguage:sourcegraph",
     "onView:sourcegraph",
-    "onCommand:extension.browse",
+    "onCommand:extension.browseFile",
+    "onCommand:extension.browseRepository",
     "onCommand:extension.open",
     "onCommand:extension.search"
   ],
@@ -72,8 +73,12 @@
     ],
     "commands": [
       {
-        "command": "extension.browse",
-        "title": "Sourcegraph: Browse"
+        "command": "extension.browseFile",
+        "title": "Sourcegraph: Go to file"
+      },
+      {
+        "command": "extension.browseRepository",
+        "title": "Sourcegraph: Go to repository"
       },
       {
         "command": "extension.createNewNotebook",
@@ -117,9 +122,14 @@
         "when": "editorFocus"
       },
       {
-        "command": "extension.browse",
+        "command": "extension.browseFile",
         "key": "alt+b",
         "mac": "alt+b"
+      },
+      {
+        "command": "extension.browseRepository",
+        "key": "alt+r",
+        "mac": "alt+r"
       },
       {
         "command": "extension.search",
@@ -162,6 +172,17 @@
           "type": "array",
           "items": {
             "type": "string"
+          },
+          "markdownDescription": "Files that have been opened through the 'Browse' command"
+        },
+        "sourcegraph.recentlyBrowsedRepositories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "uri": { "type": "string" }
+            }
           },
           "markdownDescription": "Files that have been opened through the 'Browse' command"
         }
