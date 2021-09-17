@@ -9,7 +9,7 @@ const RECENTLY_BROWSED_FILES_KEY = 'recentlyBrowsedFiles'
 
 const CONFIG = vscode.workspace.getConfiguration('sourcegraph')
 
-export default async function browseFileCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
+export default async function goToFileCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {
         const sg = new SourcegraphQuickPick(fs)
         sg.pick.title = 'Go to a file or paste a Sourcegraph URL'
@@ -55,7 +55,7 @@ export default async function browseFileCommand(fs: SourcegraphFileSystemProvide
         await openSourcegraphUriCommand(uri)
     } catch (error) {
         if (typeof error !== 'undefined') {
-            log.appendLine(`ERROR - browseFileCommand: ${error}`)
+            log.appendLine(`ERROR - goToFileCommand: ${error}`)
         }
     }
 }
@@ -96,7 +96,7 @@ function parseRecentlyBrowsedFile(settingValue: string): BrowseQuickPickItem | u
                 uri: uri.uri,
                 label: uri.path,
                 description: uri.repositoryName,
-                detail: settingValue,
+                detail: 'Recently visited',
                 unresolvedRepositoryName: uri.repositoryName,
             }
         }

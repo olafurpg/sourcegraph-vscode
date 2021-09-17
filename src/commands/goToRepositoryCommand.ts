@@ -9,7 +9,7 @@ import { BrowseQuickPickItem, SourcegraphQuickPick } from './SourcegraphQuickPic
 
 const RECENTLY_BROWSED_REPOSITORIES_KEY = 'recentlyBrowsedRepositories'
 
-export default async function browseRepositoryCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
+export default async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {
         const sg = new SourcegraphQuickPick(fs)
         const recentlyBrowsedRepositories = loadRecentlyBrowsedRepositoriesSetting()
@@ -36,7 +36,7 @@ export default async function browseRepositoryCommand(fs: SourcegraphFileSystemP
         await openSourcegraphUriCommand(uri)
     } catch (error) {
         if (typeof error !== 'undefined') {
-            log.appendLine(`ERROR - browseRepositoryCommand: ${error}`)
+            log.appendLine(`ERROR - goToRepositoryCommand: ${error}`)
         }
     }
 }
@@ -81,6 +81,7 @@ function loadRecentlyBrowsedRepositoriesSetting(): BrowseQuickPickItem[] {
                 uri: uri.uri,
                 label: repositoryLabel(label),
                 description: uri.path,
+                detail: 'Recently visited',
             })
         } catch (_error) {}
     }

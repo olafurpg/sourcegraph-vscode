@@ -24,9 +24,6 @@ export class SourcegraphQuickPick {
     public async showQuickPickAndGetUserInput(): Promise<SourcegraphUri> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
-            this.pick.ignoreFocusOut = true
-            this.pick.matchOnDescription = true
-            this.pick.matchOnDetail = true
             this.pick.items = this.recentlyBrowsedItems
             let pendingRequests: vscode.CancellationTokenSource = new vscode.CancellationTokenSource()
             const onCancelableDidChangeValue = async (value: string) => {
