@@ -81,8 +81,13 @@ export function activate(context: vscode.ExtensionContext): void {
         )
     )
     context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'extension.focusActiveFile',
+            handleCommandErrors('extension.focusActiveFile', () => fs.focusActiveFile())
+        )
+    )
+    context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', async uri => {
-            log.appendLine(`openFile ${uri}`)
             if (typeof uri === 'string') {
                 await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
             } else {

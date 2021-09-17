@@ -73,6 +73,10 @@ export default class SourcegraphFileSystemProvider
         }
         return promises
     }
+    public async focusActiveFile(): Promise<void> {
+        await vscode.commands.executeCommand('sourcegraph.files.focus')
+        await this.didFocus(this.activeUri)
+    }
     public async didFocus(uri: vscode.Uri | undefined): Promise<void> {
         this.activeUri = uri
         if (uri && uri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
