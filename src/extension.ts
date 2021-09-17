@@ -1,22 +1,18 @@
-import open from 'open'
 import * as vscode from 'vscode'
-import { getSourcegraphUrl } from './config'
-import { repoInfo } from './git'
-import { SourcegraphFileSystemProvider } from './file-system/SourcegraphFileSystemProvider'
-import { SourcegraphSemanticTokenProvider } from './highlighting/SourcegraphSemanticTokenProvider'
+import SourcegraphFileSystemProvider from './file-system/SourcegraphFileSystemProvider'
+import SourcegraphSemanticTokenProvider from './highlighting/SourcegraphSemanticTokenProvider'
 import goToFileCommand from './commands/goToFileCommand'
 import createNewNotebookCommand from './commands/createNewNotebookCommand'
 import openSourcegraphUriCommand from './commands/openSourcegraphUriCommand'
-import { SourcegraphCompletionItemProvider } from './notebook/SourcegraphCompletionItemProvider'
-import { SourcegraphNotebookSerializer } from './notebook/SourcegraphNotebookSerializer'
-import { log } from './log'
 import SourcegraphUri from './file-system/SourcegraphUri'
 import goToRepositoryCommand from './commands/goToRepositoryCommand'
+import openCommand from './commands/openCommand'
+import searchCommand from './commands/searchCommand'
+import SourcegraphCompletionItemProvider from './notebook/SourcegraphCompletionItemProvider'
+import SourcegraphNotebookSerializer from './notebook/SourcegraphNotebookSerializer'
+import { log } from './log'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
 const { version } = require('../package.json')
-
-export const IS_DEBUG_ENABLED = vscode.workspace.getConfiguration('sourcegraph').get<boolean>('debug', false)
 
 /**
  * Displays an error message to the user.
@@ -38,72 +34,22 @@ const handleCommandErrors =
     }
 
 /**
- * The command implementation for opening a cursor selection on Sourcegraph.
- */
-async function openCommand(): Promise<void> {
-    const editor = vscode.window.activeTextEditor
-    if (!editor) {
-        throw new Error('No active editor')
-    }
-    const repositoryInfo = await repoInfo(editor.document.uri.fsPath)
-    if (!repositoryInfo) {
-        return
-    }
-    const { remoteURL, branch, fileRelative } = repositoryInfo
-
-    // Open in browser.
-    await open(
-        `${getSourcegraphUrl()}/-/editor` +
-            `?remote_url=${encodeURIComponent(remoteURL)}` +
-            `&branch=${encodeURIComponent(branch)}` +
-            `&file=${encodeURIComponent(fileRelative)}` +
-            `&editor=${encodeURIComponent('VSCode')}` +
-            `&version=${encodeURIComponent(version)}` +
-            `&start_row=${encodeURIComponent(String(editor.selection.start.line))}` +
-            `&start_col=${encodeURIComponent(String(editor.selection.start.character))}` +
-            `&end_row=${encodeURIComponent(String(editor.selection.end.line))}` +
-            `&end_col=${encodeURIComponent(String(editor.selection.end.character))}`
-    )
-}
-
-/**
- * The command implementation for searching a cursor selection on Sourcegraph.
- */
-async function searchCommand(): Promise<void> {
-    const editor = vscode.window.activeTextEditor
-    if (!editor) {
-        throw new Error('No active editor')
-    }
-    const repositoryInfo = await repoInfo(editor.document.uri.fsPath)
-    if (!repositoryInfo) {
-        return
-    }
-    const { remoteURL, branch, fileRelative } = repositoryInfo
-
-    const query = editor.document.getText(editor.selection)
-    if (query === '') {
-        return // nothing to query
-    }
-
-    // Search in browser.
-    await open(
-        `${getSourcegraphUrl()}/-/editor` +
-            `?remote_url=${encodeURIComponent(remoteURL)}` +
-            `&branch=${encodeURIComponent(branch)}` +
-            `&file=${encodeURIComponent(fileRelative)}` +
-            `&editor=${encodeURIComponent('VSCode')}` +
-            `&version=${encodeURIComponent(version)}` +
-            `&search=${encodeURIComponent(query)}`
-    )
-}
-
-/**
  * Called when the extension is activated.
  */
 export function activate(context: vscode.ExtensionContext): void {
     // Register our extension commands (see package.json).
-    context.subscriptions.push(vscode.commands.registerCommand('extension.open', handleCommandErrors(openCommand)))
-    context.subscriptions.push(vscode.commands.registerCommand('extension.search', handleCommandErrors(searchCommand)))
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'extension.open',
+            handleCommandErrors(() => openCommand(version))
+        )
+    )
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'extension.search',
+            handleCommandErrors(() => searchCommand(version))
+        )
+    )
 
     // Register file-system related functionality.
     const fs = new SourcegraphFileSystemProvider()
@@ -115,21 +61,34 @@ export function activate(context: vscode.ExtensionContext): void {
     fs.setTreeView(treeView)
     const semanticTokens = new SourcegraphSemanticTokenProvider()
     context.subscriptions.push(treeView)
-    context.subscriptions.push(vscode.commands.registerCommand('extension.goToFile', () => goToFileCommand(fs)))
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.goToRepository', () => goToRepositoryCommand(fs))
+        vscode.commands.registerCommand(
+            'extension.goToFile',
+            handleCommandErrors(() => goToFileCommand(fs))
+        )
     )
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.newNotebook', () => createNewNotebookCommand())
+        vscode.commands.registerCommand(
+            'extension.goToRepository',
+            handleCommandErrors(() => goToRepositoryCommand(fs))
+        )
     )
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.openFile', uri => {
-            if (typeof uri === 'string') {
-                openSourcegraphUriCommand(SourcegraphUri.parse(uri))
-            } else {
-                log.appendLine(`ERROR extension.openFile(${uri}) argument is not a string`)
-            }
-        })
+        vscode.commands.registerCommand(
+            'extension.newNotebook',
+            handleCommandErrors(() => createNewNotebookCommand())
+        )
+    )
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.openFile', uri =>
+            handleCommandErrors(async () => {
+                if (typeof uri === 'string') {
+                    await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
+                } else {
+                    log.appendLine(`ERROR extension.openFile(${uri}) argument is not a string`)
+                }
+            })
+        )
     )
 
     // Register Notebooks related functionality.

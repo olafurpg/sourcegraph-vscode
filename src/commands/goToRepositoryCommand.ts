@@ -1,92 +1,59 @@
-import * as vscode from 'vscode'
 import repositoriesQuery from '../queries/repositoriesQuery'
 
-import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
+import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
 import SourcegraphUri from '../file-system/SourcegraphUri'
 import { log } from '../log'
 import openSourcegraphUriCommand from './openSourcegraphUriCommand'
 import { BrowseQuickPickItem, SourcegraphQuickPick } from './SourcegraphQuickPick'
-
-const RECENTLY_BROWSED_REPOSITORIES_KEY = 'recentlyBrowsedRepositories'
+import recentlyVisitedRepositoriesSetting from '../settings/recentlyVisitedRepositoriesSetting'
 
 export default async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     try {
         const sg = new SourcegraphQuickPick(fs)
-        const recentlyBrowsedRepositories = loadRecentlyBrowsedRepositoriesSetting()
-        sg.pick.items = recentlyBrowsedRepositories
+        sg.pick.title = 'Type in a repository or paste a Sourcegraph URL'
+        sg.pick.matchOnDescription = true
+        sg.pick.matchOnDetail = true
+        const recentlyVisitedRepositories = recentlyVisitedRepositoriesSetting.load()
+        sg.pick.items = recentlyVisitedRepositories
         sg.onDidChangeValue(async query => {
             if (query.text === '') {
-                sg.pick.items = recentlyBrowsedRepositories
+                sg.pick.items = recentlyVisitedRepositories
+                return
+            }
+            if (query.text.startsWith('https://sourcegraph.com')) {
+                try {
+                    const uri = SourcegraphUri.parse(query.text)
+                    const item: BrowseQuickPickItem = {
+                        uri: uri.uri,
+                        label: recentlyVisitedRepositoriesSetting.label(uri.repositoryName),
+                        description: uri.path,
+                        unresolvedRepositoryName: uri.repositoryName,
+                        detail: query.text,
+                    }
+                    sg.pick.items = [item]
+                } catch (_error) {
+                    // TODO: report helpful error message
+                }
                 return
             }
             sg.pick.busy = true
             const repos = await repositoriesQuery(query.text, query.token)
             if (!query.token.isCancellationRequested) {
                 const queryItems: BrowseQuickPickItem[] = repos.map(repo => ({
-                    label: repositoryLabel(repo),
+                    label: recentlyVisitedRepositoriesSetting.label(repo),
                     uri: '',
                     unresolvedRepositoryName: repo,
                 }))
-                sg.pick.items = [...queryItems, ...recentlyBrowsedRepositories]
+                sg.pick.items = [...queryItems, ...recentlyVisitedRepositories]
                 sg.pick.busy = false
             }
         })
         const uri = await sg.showQuickPickAndGetUserInput()
-        updateRecentlyBrowsedRepositoriesSetting({ label: uri.repositoryName, uri: uri.uri })
+        recentlyVisitedRepositoriesSetting.update({ label: uri.repositoryName, uri: uri.uri })
         await openSourcegraphUriCommand(uri)
     } catch (error) {
         if (typeof error !== 'undefined') {
             log.appendLine(`ERROR - goToRepositoryCommand: ${error}`)
         }
     }
-}
-
-function repositoryLabel(repositoryName: string): string {
-    return repositoryName.startsWith('github.com') ? `\$(mark-github) ${repositoryName}` : repositoryName
-}
-
-interface RecentlyBrowsedRepositoryItem {
-    label: string
-    uri: string
-}
-const config = vscode.workspace.getConfiguration('sourcegraph')
-
-function updateRecentlyBrowsedRepositoriesSetting(newValue: RecentlyBrowsedRepositoryItem): void {
-    const oldSettingValues = config
-        .get<any[]>(RECENTLY_BROWSED_REPOSITORIES_KEY, [])
-        .filter(item => item?.label !== newValue.label)
-    config.update(
-        RECENTLY_BROWSED_REPOSITORIES_KEY,
-        [newValue, ...oldSettingValues].slice(0, 10),
-        vscode.ConfigurationTarget.Global
-    )
-}
-
-function loadRecentlyBrowsedRepositoriesSetting(): BrowseQuickPickItem[] {
-    const result: BrowseQuickPickItem[] = []
-    const settingValues = config.get<any[]>(RECENTLY_BROWSED_REPOSITORIES_KEY, [])
-    const validSettingValues: RecentlyBrowsedRepositoryItem[] = []
-    for (const settingValue of settingValues) {
-        if (typeof settingValue !== 'object') {
-            continue
-        }
-        const label = settingValue?.label
-        if (typeof label !== 'string') {
-            continue
-        }
-        try {
-            const uri = SourcegraphUri.parse(settingValue?.uri as string)
-            validSettingValues.push({ label, uri: uri.uri })
-            result.push({
-                uri: uri.uri,
-                label: repositoryLabel(label),
-                description: uri.path,
-                detail: 'Recently visited',
-            })
-        } catch (_error) {}
-    }
-    if (result.length !== settingValues.length) {
-        config.update(RECENTLY_BROWSED_REPOSITORIES_KEY, result, vscode.ConfigurationTarget.Global)
-    }
-    return result
 }

@@ -68,7 +68,7 @@
     "viewsWelcome": [
       {
         "view": "sourcegraph.files",
-        "contents": "[Browse](command:extension.browse)"
+        "contents": "[Go to file](command:extension.goToFile)\n[Go to repository](command:extension.goToRepository)"
       }
     ],
     "commands": [
@@ -168,14 +168,14 @@
           "default": false,
           "markdownDescription": "If true, log detailed troubleshooting information to the Sourcegraph output channel."
         },
-        "sourcegraph.recentlyBrowsedFiles": {
+        "sourcegraph.recentlyVisitedFiles": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "markdownDescription": "Files that have been opened through the 'Browse' command"
+          "markdownDescription": "Files that have been opened through the 'Go to file' command"
         },
-        "sourcegraph.recentlyBrowsedRepositories": {
+        "sourcegraph.recentlyVisitedRepositories": {
           "type": "array",
           "items": {
             "type": "object",
@@ -184,7 +184,7 @@
               "uri": { "type": "string" }
             }
           },
-          "markdownDescription": "Files that have been opened through the 'Browse' command"
+          "markdownDescription": "Files that have been opened through the 'Go to repository' command"
         }
       }
     }

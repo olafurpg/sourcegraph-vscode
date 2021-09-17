@@ -21,7 +21,7 @@ export interface RepositoryFileNames {
     fileNames: string[]
 }
 
-export class SourcegraphFileSystemProvider
+export default class SourcegraphFileSystemProvider
     implements
         vscode.TreeDataProvider<string>,
         vscode.FileSystemProvider,

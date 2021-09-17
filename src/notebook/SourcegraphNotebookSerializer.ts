@@ -8,7 +8,7 @@ import MarkdownFile, { MarkdownPart, MarkdownPartKind } from './MarkdownFile'
 import SourcegraphUri from '../file-system/SourcegraphUri'
 import { SRC_ENDPOINT_HOST } from '../file-system/SourcegraphFileSystemProvider'
 
-export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer {
+export default class SourcegraphNotebookSerializer implements vscode.NotebookSerializer {
     private readonly decoder = new TextDecoder()
     private readonly encoder = new TextEncoder()
     private readonly messageChannel = vscode.notebooks.createRendererMessaging('sourcegraph-location-renderer')

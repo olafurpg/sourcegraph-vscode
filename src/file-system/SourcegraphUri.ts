@@ -16,7 +16,9 @@ export default class SourcegraphUri {
 
     public withRevision(newRevision: string | undefined): SourcegraphUri {
         const newRevisionPath = newRevision ? `@${newRevision}` : ''
-        return SourcegraphUri.parse(`sourcegraph://${this.host}/${this.repositoryName}@${newRevisionPath}/${this.path}`)
+        return SourcegraphUri.parse(
+            `sourcegraph://${this.host}/${this.repositoryName}${newRevisionPath}/-/blob/${this.path}`
+        )
     }
 
     public withPath(newPath: string): SourcegraphUri {

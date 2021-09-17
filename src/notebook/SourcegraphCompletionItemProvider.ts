@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import { getCompletionItems } from '../highlighting/completion'
 import { scanSearchQuery, SearchPatternType } from '../highlighting/scanner'
 
-export class SourcegraphCompletionItemProvider implements vscode.CompletionItemProvider {
+export default class SourcegraphCompletionItemProvider implements vscode.CompletionItemProvider {
     public async provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,

@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
-import { IS_DEBUG_ENABLED } from '../extension'
 import { log } from '../log'
+import debugEnabledSetting from '../settings/debugEnabledSetting'
 
 export default function graphqlQuery<A, B>(
     query: string,
@@ -33,7 +33,7 @@ export default function graphqlQuery<A, B>(
             '-vars',
             JSON.stringify(variables),
         ]
-        if (IS_DEBUG_ENABLED) {
+        if (debugEnabledSetting) {
             log.appendLine('src ' + command.map(part => `'${part}'`).join(' '))
         }
         const proc = spawn('src', command)

@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import { scanSearchQuery, SearchPatternType } from './scanner'
 import { decorate, DecoratedToken } from './decoratedToken'
 
-export class SourcegraphSemanticTokenProvider
+export default class SourcegraphSemanticTokenProvider
     implements vscode.DocumentSemanticTokensProvider, vscode.SemanticTokensLegend
 {
     tokenTypes: string[] = [
