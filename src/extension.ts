@@ -22,12 +22,13 @@ async function showError(error: Error): Promise<void> {
 }
 
 const handleCommandErrors =
-    <P extends unknown[], R>(command: (...args: P) => Promise<R>) =>
+    <P extends unknown[], R>(what: string, command: (...args: P) => Promise<R>) =>
     async (...args: P): Promise<R | void> => {
         try {
             return await command(...args)
         } catch (error) {
             if (error instanceof Error) {
+                log.error(what, error)
                 await showError(error)
             }
         }
@@ -41,13 +42,13 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.open',
-            handleCommandErrors(() => openCommand(version))
+            handleCommandErrors('extension.open', () => openCommand(version))
         )
     )
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.search',
-            handleCommandErrors(() => searchCommand(version))
+            handleCommandErrors('extension.search', () => searchCommand(version))
         )
     )
 
@@ -64,24 +65,24 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.goToFile',
-            handleCommandErrors(() => goToFileCommand(fs))
+            handleCommandErrors('extension.goToFile', () => goToFileCommand(fs))
         )
     )
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.goToRepository',
-            handleCommandErrors(() => goToRepositoryCommand(fs))
+            handleCommandErrors('extension.goToRepository', () => goToRepositoryCommand(fs))
         )
     )
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.newNotebook',
-            handleCommandErrors(() => createNewNotebookCommand())
+            handleCommandErrors('extension.newNotebook', () => createNewNotebookCommand())
         )
     )
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', uri =>
-            handleCommandErrors(async () => {
+            handleCommandErrors('extension.openFile', async () => {
                 if (typeof uri === 'string') {
                     await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
                 } else {

@@ -21,8 +21,10 @@
     "onFileSystem:sourcegraph",
     "onLanguage:sourcegraph",
     "onView:sourcegraph",
+    "onCommand:extension.openFile",
     "onCommand:extension.goToFile",
     "onCommand:extension.goToRepository",
+    "onCommand:extension.newNotebook",
     "onCommand:extension.open",
     "onCommand:extension.search"
   ],
@@ -55,14 +57,14 @@
       {
         "id": "sourcegraph",
         "aliases": [
+          "Sourcegraph Query",
           "Sourcegraph",
           "sourcegraph"
         ],
         "extensions": [
           ".sourcegraph"
         ],
-        "//": "TODO: experiment with adding an iconFont like here https://github.com/microsoft/vscode/issues/114942#issuecomment-773457375",
-        "configuration": "./language-configuration.json"
+        "//": "TODO: experiment with adding an iconFont as mentioned here https://github.com/microsoft/vscode/issues/114942#issuecomment-773457375"
       }
     ],
     "viewsWelcome": [
