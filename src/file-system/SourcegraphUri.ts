@@ -28,7 +28,12 @@ export default class SourcegraphUri {
         return parts[parts.length - 1]
     }
 
-    public dirname(): string | undefined {
+    public dirname(): string {
+        const parts = (this.path || '').split('/')
+        return parts.slice(0, parts.length - 1).join('/')
+    }
+
+    public parentUri(): string | undefined {
         if (typeof this.path === 'string') {
             const slash = this.uri.lastIndexOf('/')
             if (slash < 0 || !this.path.includes('/')) {

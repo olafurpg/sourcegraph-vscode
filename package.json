@@ -123,8 +123,8 @@
       },
       {
         "command": "extension.browseFile",
-        "key": "alt+b",
-        "mac": "alt+b"
+        "key": "alt+f",
+        "mac": "alt+f"
       },
       {
         "command": "extension.browseRepository",

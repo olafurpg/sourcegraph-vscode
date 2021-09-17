@@ -74,12 +74,12 @@ export class SourcegraphQuickPick {
         let uriString = selection.uri
         if (selection.unresolvedRepositoryName) {
             // Update the missing file path if it's missing
-            if (!selection.uri || !SourcegraphUri.parse(selection.uri).path) {
+            if (!uriString || !SourcegraphUri.parse(uriString).path) {
                 uriString = (await this.fs.defaultFileUri(selection.unresolvedRepositoryName)).uri
             }
 
             // Update the missing revision if it's missing
-            const uri = SourcegraphUri.parse(selection.uri)
+            const uri = SourcegraphUri.parse(uriString)
             if (!uri.revision) {
                 const metadata = await this.fs.repositoryMetadata(uri.repositoryName)
                 const revision = metadata?.defaultBranch || 'HEAD'

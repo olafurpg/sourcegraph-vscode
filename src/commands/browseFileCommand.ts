@@ -23,15 +23,18 @@ export default async function browseFileCommand(fs: SourcegraphFileSystemProvide
                     if (file === '') {
                         continue
                     }
+                    // Intentionally avoid using `SourcegraphUri.parse()` for
+                    // performance reasons.  This loop is a hot path for large
+                    // repositories like chromium/chromium with ~400k files.
                     fileItems.push({
-                        uri: repo.repositoryUri.withPath(file).uri,
+                        uri: `${repo.repositoryUri}/-/blob/${file}`,
                         label: file,
-                        detail: repo.repositoryLabel,
+                        description: repo.repositoryName,
                     })
                 }
             }
-            sg.pick.items = fileItems
             sg.pick.busy = false
+            sg.pick.items = fileItems
         })
         sg.onDidChangeValue(value => {
             if (value.text.startsWith('https://sourcegraph.com')) {
@@ -60,7 +63,7 @@ export default async function browseFileCommand(fs: SourcegraphFileSystemProvide
 function updateRecentlyBrowsedFilesSetting(newValue: string): void {
     const oldValues = CONFIG.get<string[]>(RECENTLY_BROWSED_FILES_KEY, [])
     if (!oldValues.includes(newValue)) {
-        CONFIG.update(RECENTLY_BROWSED_FILES_KEY, [newValue, ...oldValues].slice(0, 30))
+        CONFIG.update(RECENTLY_BROWSED_FILES_KEY, [newValue, ...oldValues].slice(0, 10))
     }
 }
 

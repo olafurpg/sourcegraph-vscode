@@ -16,8 +16,8 @@ import referencesQuery from '../queries/referencesQuery'
 export const SRC_ENDPOINT_HOST = 'sourcegraph.com'
 
 export interface RepositoryFileNames {
-    repositoryUri: SourcegraphUri
-    repositoryLabel: string
+    repositoryUri: string
+    repositoryName: string
     fileNames: string[]
 }
 
@@ -61,13 +61,17 @@ export class SourcegraphFileSystemProvider
     public async allFileFromOpenRepositories(): Promise<RepositoryFileNames[]> {
         const promises: RepositoryFileNames[] = []
         for (const [repositoryUri, downloadingFileNames] of this.fileNamesByRepositoryUri.entries()) {
-            const fileNames = await downloadingFileNames
-            const uri = SourcegraphUri.parse(repositoryUri)
-            promises.push({
-                repositoryUri: SourcegraphUri.parse(repositoryUri),
-                repositoryLabel: `${uri.repositoryName}${uri.revisionPath()}`,
-                fileNames,
-            })
+            try {
+                const fileNames = await downloadingFileNames
+                const uri = SourcegraphUri.parse(repositoryUri)
+                promises.push({
+                    repositoryUri: uri.repositoryUri(),
+                    repositoryName: `${uri.repositoryName}${uri.revisionPath()}`,
+                    fileNames,
+                })
+            } catch (_error) {
+                log.appendLine(`ERROR: failed to download repo files ${repositoryUri}`)
+            }
         }
         return promises
     }
@@ -80,7 +84,7 @@ export class SourcegraphFileSystemProvider
     private async didFocusString(uri: SourcegraphUri, isDestinationNode: boolean): Promise<void> {
         try {
             if (this.treeView) {
-                const parent = uri.dirname()
+                const parent = uri.parentUri()
                 if (parent && !this.isExpandedNode.has(parent)) {
                     await this.didFocusString(SourcegraphUri.parse(parent), false)
                 }
@@ -137,7 +141,7 @@ export class SourcegraphFileSystemProvider
         uri: SourcegraphUri,
         isDirectory: boolean
     ): Promise<vscode.TreeItemCollapsibleState> {
-        const parent = uri.dirname()
+        const parent = uri.parentUri()
         if (isDirectory && parent) {
             const parentUri = SourcegraphUri.parse(parent)
             if (parentUri.path) {
@@ -186,7 +190,7 @@ export class SourcegraphFileSystemProvider
         }
     }
     public getParent(uriString: string): string | undefined {
-        return SourcegraphUri.parse(uriString).dirname()
+        return SourcegraphUri.parse(uriString).parentUri()
     }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event

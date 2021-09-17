@@ -19,7 +19,8 @@ Keyboard Shortcuts:
 | Description                              | Mac                            | Linux / Windows             |
 | ---------------------------------------- | ------------------------------ | --------------------------- |
 | Sourcegraph: Open file in browser        | <kbd>Option</kbd>+<kbd>A</kbd> | <kbd>Alt</kbd>+<kbd>A</kbd> |
-| Sourcegraph: Browse file in editor       | <kbd>Option</kbd>+<kbd>B</kbd> | <kbd>Alt</kbd>+<kbd>B</kbd> |
+| Sourcegraph: Go to file in editor        | <kbd>Option</kbd>+<kbd>F</kbd> | <kbd>Alt</kbd>+<kbd>F</kbd> |
+| Sourcegraph: Go to repository in editor  | <kbd>Option</kbd>+<kbd>R</kbd> | <kbd>Alt</kbd>+<kbd>R</kbd> |
 | Sourcegraph: Search selection in browser | <kbd>Option</kbd>+<kbd>S</kbd> | <kbd>Alt</kbd>+<kbd>S</kbd> |
 
 ## Extension Settings
@@ -29,6 +30,8 @@ This extension contributes the following settings:
 - `sourcegraph.url`: The Sourcegraph instance to use. Specify your on-premises Sourcegraph instance here, if applicable.
 - `sourcegraph.remoteUrlReplacements`: Object, where each `key` is replaced by `value` in the remote url.
 - `sourcegraph.defaultBranch`: String to set the name of the default branch. Always open files in the default branch.
+- `sourcegraph.recentlyBrowsedFiles`: List of strings for recently visited files. This setting is automatically managed by the extension.
+- `sourcegraph.recentlyBrowsedRepositories`: List of strings for recently visited repositories. This setting is automatically managed by the extension.
 
 ## Questions & Feedback
 
