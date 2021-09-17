@@ -9,8 +9,8 @@ export default async function hoverQuery(
 ): Promise<string | undefined> {
     const response = await graphqlQuery<PositionParameters, HoverResult>(
         gql`
-            query Hover($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
-                repository(name: $repository) {
+            query Hover($repositoryName: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
+                repository(name: $repositoryName) {
                     commit(rev: $revision) {
                         blob(path: $path) {
                             lsif {

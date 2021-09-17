@@ -21,8 +21,8 @@
     "onFileSystem:sourcegraph",
     "onLanguage:sourcegraph",
     "onView:sourcegraph",
-    "onCommand:extension.browseFile",
-    "onCommand:extension.browseRepository",
+    "onCommand:extension.goToFile",
+    "onCommand:extension.goToRepository",
     "onCommand:extension.open",
     "onCommand:extension.search"
   ],
@@ -73,16 +73,16 @@
     ],
     "commands": [
       {
-        "command": "extension.browseFile",
+        "command": "extension.goToFile",
         "title": "Sourcegraph: Go to file"
       },
       {
-        "command": "extension.browseRepository",
+        "command": "extension.goToRepository",
         "title": "Sourcegraph: Go to repository"
       },
       {
-        "command": "extension.createNewNotebook",
-        "title": "Sourcegraph: Create new notebook"
+        "command": "extension.newNotebook",
+        "title": "Sourcegraph: New notebook"
       },
       {
         "command": "extension.openFile",
@@ -122,12 +122,12 @@
         "when": "editorFocus"
       },
       {
-        "command": "extension.browseFile",
+        "command": "extension.goToFile",
         "key": "alt+f",
         "mac": "alt+f"
       },
       {
-        "command": "extension.browseRepository",
+        "command": "extension.goToRepository",
         "key": "alt+r",
         "mac": "alt+r"
       },

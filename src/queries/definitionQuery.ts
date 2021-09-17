@@ -10,8 +10,14 @@ export default async function definitionQuery(
 ): Promise<LocationNode[]> {
     const definition = await graphqlQuery<PositionParameters, DefinitionResult>(
         gql`
-            query Definition($repository: String!, $revision: String!, $path: String!, $line: Int!, $character: Int!) {
-                repository(name: $repository) {
+            query Definition(
+                $repositoryName: String!
+                $revision: String!
+                $path: String!
+                $line: Int!
+                $character: Int!
+            ) {
+                repository(name: $repositoryName) {
                     commit(rev: $revision) {
                         blob(path: $path) {
                             lsif {

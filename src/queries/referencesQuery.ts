@@ -11,14 +11,14 @@ export default async function referencesQuery(
     const response = await graphqlQuery<PositionParameters, ReferencesResult>(
         gql`
             query References(
-                $repository: String!
+                $repositoryName: String!
                 $revision: String!
                 $path: String!
                 $line: Int!
                 $character: Int!
                 $after: String
             ) {
-                repository(name: $repository) {
+                repository(name: $repositoryName) {
                     commit(rev: $revision) {
                         blob(path: $path) {
                             lsif {

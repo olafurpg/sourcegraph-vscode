@@ -115,12 +115,12 @@ export function activate(context: vscode.ExtensionContext): void {
     fs.setTreeView(treeView)
     const semanticTokens = new SourcegraphSemanticTokenProvider()
     context.subscriptions.push(treeView)
-    context.subscriptions.push(vscode.commands.registerCommand('extension.browseFile', () => browseFileCommand(fs)))
+    context.subscriptions.push(vscode.commands.registerCommand('extension.goToFile', () => browseFileCommand(fs)))
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.browseRepository', () => browseRepositoryCommand(fs))
+        vscode.commands.registerCommand('extension.goToRepository', () => browseRepositoryCommand(fs))
     )
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.createNewNotebook', () => createNewNotebookCommand())
+        vscode.commands.registerCommand('extension.newNotebook', () => createNewNotebookCommand())
     )
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', uri => {
