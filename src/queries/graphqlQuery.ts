@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
-import { log } from '../log'
+import log from '../log'
 import debugEnabledSetting from '../settings/debugEnabledSetting'
 
 export default function graphqlQuery<A, B>(

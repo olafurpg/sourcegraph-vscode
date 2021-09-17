@@ -2,7 +2,7 @@ import repositoriesQuery from '../queries/repositoriesQuery'
 
 import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
 import SourcegraphUri from '../file-system/SourcegraphUri'
-import { log } from '../log'
+import log from '../log'
 import openSourcegraphUriCommand from './openSourcegraphUriCommand'
 import { BrowseQuickPickItem, SourcegraphQuickPick } from './SourcegraphQuickPick'
 import recentlyVisitedRepositoriesSetting from '../settings/recentlyVisitedRepositoriesSetting'
@@ -53,7 +53,7 @@ export default async function goToRepositoryCommand(fs: SourcegraphFileSystemPro
         await openSourcegraphUriCommand(uri)
     } catch (error) {
         if (typeof error !== 'undefined') {
-            log.appendLine(`ERROR - goToRepositoryCommand: ${error}`)
+            log.error(`goToRepositoryCommand`, error)
         }
     }
 }

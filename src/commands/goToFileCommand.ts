@@ -1,5 +1,5 @@
 import openSourcegraphUriCommand from './openSourcegraphUriCommand'
-import { log } from '../log'
+import log from '../log'
 import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
 import { SourcegraphQuickPick } from './SourcegraphQuickPick'
 import recentlyVisitedFilesSetting from '../settings/recentlyVisitedFilesSetting'
@@ -36,7 +36,7 @@ export default async function goToFileCommand(fs: SourcegraphFileSystemProvider)
         await openSourcegraphUriCommand(uri)
     } catch (error) {
         if (typeof error !== 'undefined') {
-            log.appendLine(`ERROR - goToFileCommand: ${error}`)
+            log.error(`goToFileCommand`, error)
         }
     }
 }

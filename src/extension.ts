@@ -10,7 +10,7 @@ import openCommand from './commands/openCommand'
 import searchCommand from './commands/searchCommand'
 import SourcegraphCompletionItemProvider from './notebook/SourcegraphCompletionItemProvider'
 import SourcegraphNotebookSerializer from './notebook/SourcegraphNotebookSerializer'
-import { log } from './log'
+import log from './log'
 
 const { version } = require('../package.json')
 
@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 if (typeof uri === 'string') {
                     await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
                 } else {
-                    log.appendLine(`ERROR extension.openFile(${uri}) argument is not a string`)
+                    log.error(`extension.openFile(${uri}) argument is not a string`)
                 }
             })
         )

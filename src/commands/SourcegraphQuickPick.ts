@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { log } from '../log'
+import log from '../log'
 import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
 import SourcegraphUri from '../file-system/SourcegraphUri'
 
@@ -56,7 +56,7 @@ export class SourcegraphQuickPick {
                     this.pick.dispose()
                 } catch (error) {
                     this.pick.busy = false
-                    log.appendLine(`ERROR onDidAccept error=${error} selection=${JSON.stringify(selection)}`)
+                    log.error(`onDidAccept(${JSON.stringify(selection)})`, error)
                 }
             })
             this.pick.onDidHide(() => {

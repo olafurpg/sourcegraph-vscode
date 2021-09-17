@@ -1,6 +1,6 @@
 import { TextDecoder, TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import { log } from '../log'
+import log from '../log'
 import openSourcegraphUriCommand from '../commands/openSourcegraphUriCommand'
 import searchHtml from './searchHtml'
 import { SearchPatternType } from '../highlighting/scanner'

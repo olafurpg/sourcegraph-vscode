@@ -2,7 +2,7 @@
 import * as vscode from 'vscode'
 import SourcegraphUri from './SourcegraphUri'
 import { searchQuery } from '../queries/searchQuery'
-import { log } from '../log'
+import log from '../log'
 import { FileTree } from './FileTree'
 import { SearchPatternType } from '../highlighting/scanner'
 import filesQuery from '../queries/filesQuery'
@@ -162,12 +162,12 @@ export default class SourcegraphFileSystemProvider
         const downloading = this.fileNamesByRepositoryUri.get(key)
         if (!downloading) {
             const keys = JSON.stringify([...this.fileNamesByRepositoryUri.keys()])
-            log.appendLine(`ERROR getFileTree(${uri.uri}) - empty downloading key=${key} keys=${keys}`)
+            log.error(`getFileTree(${uri.uri}) - empty downloading key=${key} keys=${keys}`)
             return Promise.resolve(undefined)
         }
         const files = await downloading
         if (!files) {
-            log.appendLine(`ERROR getFileTree - empty files`)
+            log.error(`getFileTree - empty files`)
             return Promise.resolve(undefined)
         }
         // log.appendLine(`new FileTree(${JSON.stringify(files)})`)
@@ -422,7 +422,7 @@ export default class SourcegraphFileSystemProvider
             this.updateCache(toCacheResult)
             return toCacheResult
         }
-        log.appendLine(`ERROR fetchBlob(${uri.uri}) not found`)
+        log.error(`fetchBlob(${uri.uri}) not found`)
         throw new Error(`Not found '${uri.uri}'`)
     }
 
