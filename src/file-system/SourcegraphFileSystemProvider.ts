@@ -33,13 +33,11 @@ export default class SourcegraphFileSystemProvider
     private isExpandedNode = new Set<string>()
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
-    private fileNamesByRepositoryUri: Map<string, Promise<string[]>> = new Map()
+    private fileNamesByRepository: Map<string, Promise<string[]>> = new Map()
     private metadata: Map<string, RepositoryMetadata> = new Map()
-
+    private readonly cache = new Map<string, Blob>()
     private readonly uriEmitter = new vscode.EventEmitter<string | undefined>()
-    private readonly repoEmitter = new vscode.EventEmitter<string>()
 
-    public onNewRepo = this.repoEmitter.event
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.uriEmitter.event
     public setTreeView(treeView: vscode.TreeView<string>): void {
         this.treeView = treeView
@@ -60,7 +58,7 @@ export default class SourcegraphFileSystemProvider
 
     public async allFileFromOpenRepositories(): Promise<RepositoryFileNames[]> {
         const promises: RepositoryFileNames[] = []
-        for (const [repositoryUri, downloadingFileNames] of this.fileNamesByRepositoryUri.entries()) {
+        for (const [repositoryUri, downloadingFileNames] of this.fileNamesByRepository.entries()) {
             try {
                 const fileNames = await downloadingFileNames
                 const uri = SourcegraphUri.parse(repositoryUri)
@@ -159,9 +157,9 @@ export default class SourcegraphFileSystemProvider
             uri = uri.withRevision(this.metadata.get(uri.repositoryName)?.defaultBranch)
         }
         const key = uri.repositoryUri()
-        const downloading = this.fileNamesByRepositoryUri.get(key)
+        const downloading = this.fileNamesByRepository.get(key)
         if (!downloading) {
-            const keys = JSON.stringify([...this.fileNamesByRepositoryUri.keys()])
+            const keys = JSON.stringify([...this.fileNamesByRepository.keys()])
             log.error(`getFileTree(${uri.uri}) - empty downloading key=${key} keys=${keys}`)
             return Promise.resolve(undefined)
         }
@@ -176,7 +174,7 @@ export default class SourcegraphFileSystemProvider
     public async getChildren(uriString?: string): Promise<string[] | undefined> {
         try {
             if (!uriString) {
-                const repos = [...this.repos]
+                const repos = [...this.fileNamesByRepository.keys()]
                 return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
             }
             const uri = SourcegraphUri.parse(uriString)
@@ -194,14 +192,12 @@ export default class SourcegraphFileSystemProvider
     }
     private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event
-    private readonly cache = new Map<string, Blob>()
-    private readonly repos = new Set<string>()
 
     private async searchReferences(
         document: vscode.TextDocument,
         token: vscode.CancellationToken
     ): Promise<vscode.Location[]> {
-        const repos = [...this.repos]
+        const repos = [...this.fileNamesByRepository.keys()]
             .map(repo => {
                 const uri = SourcegraphUri.parse(repo)
                 return `repo:^${uri.repositoryName}$${uri.revisionPath()}`
@@ -405,7 +401,7 @@ export default class SourcegraphFileSystemProvider
         )
 
         // Start downloading the files for this repository in the background.
-        this.downloadFiles(uri, revision)
+        // this.downloadFiles(uri, revision)
 
         if (content) {
             const toCacheResult: Blob = {
@@ -427,13 +423,13 @@ export default class SourcegraphFileSystemProvider
     }
 
     private updateCache(blob: Blob) {
-        const repo = SourcegraphUri.parse(blob.uri).repositoryUri()
+        const uri = SourcegraphUri.parse(blob.uri)
+        const repo = uri.repositoryUri()
         this.cache.set(blob.uri, blob)
-        const isNew = !this.repos.has(repo)
+        const isNew = !this.fileNamesByRepository.has(repo)
         if (isNew) {
-            this.repos.add(repo)
+            this.downloadFiles(uri, blob.revision)
             this.uriEmitter.fire(undefined)
-            this.repoEmitter.fire(repo)
         }
     }
 
@@ -455,10 +451,10 @@ export default class SourcegraphFileSystemProvider
 
     private downloadFiles(uri: SourcegraphUri, revision: string): Promise<string[]> {
         const key = uri.repositoryUri()
-        let downloadingFiles = this.fileNamesByRepositoryUri.get(key)
+        let downloadingFiles = this.fileNamesByRepository.get(key)
         if (!downloadingFiles) {
             downloadingFiles = filesQuery({ repository: uri.repositoryName, revision }, emptyCancelationToken())
-            this.fileNamesByRepositoryUri.set(key, downloadingFiles)
+            this.fileNamesByRepository.set(key, downloadingFiles)
         }
         return downloadingFiles
     }

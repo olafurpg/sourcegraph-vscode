@@ -81,15 +81,14 @@ export function activate(context: vscode.ExtensionContext): void {
         )
     )
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.openFile', uri =>
-            handleCommandErrors('extension.openFile', async () => {
-                if (typeof uri === 'string') {
-                    await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
-                } else {
-                    log.error(`extension.openFile(${uri}) argument is not a string`)
-                }
-            })
-        )
+        vscode.commands.registerCommand('extension.openFile', async uri => {
+            log.appendLine(`openFile ${uri}`)
+            if (typeof uri === 'string') {
+                await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
+            } else {
+                log.error(`extension.openFile(${uri}) argument is not a string`)
+            }
+        })
     )
 
     // Register Notebooks related functionality.
@@ -99,7 +98,9 @@ export function activate(context: vscode.ExtensionContext): void {
         { language: 'sourcegraph' },
         new SourcegraphCompletionItemProvider()
     )
-    vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(async editor => await fs.didFocus(editor?.document.uri))
+    )
     fs.didFocus(vscode.window.activeTextEditor?.document.uri)
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(), {})
 }
