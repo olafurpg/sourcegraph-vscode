@@ -1,6 +1,10 @@
 import * as vscode from 'vscode'
 
 export default async function createNewNotebookCommand(): Promise<void> {
-    const textDocument = await vscode.workspace.openTextDocument({ language: 'sourcegraph' })
-    await vscode.window.showTextDocument(textDocument)
+    await vscode.workspace.openNotebookDocument(
+        'sourcegraph-notebook',
+        new vscode.NotebookData([new vscode.NotebookCellData(vscode.NotebookCellKind.Code, '', 'sourcegraph')])
+    )
+    // TODO: use `showNotebookDocument` once it's available in the stable VS Code API. It's currently only part of the "proposed API".
+    //  await vscode.window.showNotebookDocument(notebookDocument)
 }

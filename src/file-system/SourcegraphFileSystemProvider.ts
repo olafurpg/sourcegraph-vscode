@@ -405,7 +405,7 @@ export default class SourcegraphFileSystemProvider
         )
 
         // Start downloading the files for this repository in the background.
-        // this.downloadFiles(uri, revision)
+        this.downloadFiles(uri, revision)
 
         if (content) {
             const toCacheResult: Blob = {
