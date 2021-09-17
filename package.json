@@ -69,8 +69,12 @@
     ],
     "viewsWelcome": [
       {
-        "view": "sourcegraph.files",
+        "view": "sourcegraph.commands",
         "contents": "[Go to file](command:extension.goToFile)\n[Go to repository](command:extension.goToRepository)"
+      },
+      {
+        "view": "sourcegraph.files",
+        "contents": "No open files."
       }
     ],
     "commands": [
@@ -110,6 +114,10 @@
     },
     "views": {
       "sourcegraph-view": [
+        {
+          "id": "sourcegraph.commands",
+          "name": "Commands"
+        },
         {
           "id": "sourcegraph.files",
           "name": "Files"
@@ -170,14 +178,14 @@
           "default": false,
           "markdownDescription": "If true, log detailed troubleshooting information to the Sourcegraph output channel."
         },
-        "sourcegraph.recentlyVisitedFiles": {
+        "sourcegraph.recentlyOpenFiles": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "markdownDescription": "Files that have been opened through the 'Go to file' command"
         },
-        "sourcegraph.recentlyVisitedRepositories": {
+        "sourcegraph.recentlyOpenRepositories": {
           "type": "array",
           "items": {
             "type": "object",

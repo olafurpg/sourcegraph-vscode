@@ -1,13 +1,13 @@
 import openSourcegraphUriCommand from './openSourcegraphUriCommand'
 import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
 import { SourcegraphQuickPick } from './SourcegraphQuickPick'
-import recentlyVisitedFilesSetting from '../settings/recentlyVisitedFilesSetting'
+import recentlyOpenFilesSetting from '../settings/recentlyOpenFilesSetting'
 
 export default async function goToFileCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     const sg = new SourcegraphQuickPick(fs)
     sg.pick.title = 'Go to a file from the open Sourcegraph repositories'
-    const recentlyVisitedFiles = recentlyVisitedFilesSetting.load()
-    const fileItems = [...recentlyVisitedFiles]
+    const recentlyOpenFiles = recentlyOpenFilesSetting.load()
+    const fileItems = [...recentlyOpenFiles]
     sg.pick.items = fileItems
     sg.pick.busy = true
     fs.allFileFromOpenRepositories().then(allFiles => {
@@ -30,6 +30,6 @@ export default async function goToFileCommand(fs: SourcegraphFileSystemProvider)
         sg.pick.items = fileItems
     })
     const uri = await sg.showQuickPickAndGetUserInput()
-    recentlyVisitedFilesSetting.update(uri.uri)
+    recentlyOpenFilesSetting.update(uri.uri)
     await openSourcegraphUriCommand(uri)
 }

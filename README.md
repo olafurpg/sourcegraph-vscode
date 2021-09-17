@@ -30,8 +30,8 @@ This extension contributes the following settings:
 - `sourcegraph.url`: The Sourcegraph instance to use. Specify your on-premises Sourcegraph instance here, if applicable.
 - `sourcegraph.remoteUrlReplacements`: Object, where each `key` is replaced by `value` in the remote url.
 - `sourcegraph.defaultBranch`: String to set the name of the default branch. Always open files in the default branch.
-- `sourcegraph.recentlyVisitedFiles`: List of strings for recently visited files. This setting is automatically managed by the extension.
-- `sourcegraph.recentlyVisitedRepositories`: List of strings for recently visited repositories. This setting is automatically managed by the extension.
+- `sourcegraph.recentlyOpenFiles`: List of strings for recently visited files. This setting is automatically managed by the extension.
+- `sourcegraph.recentlyOpenRepositories`: List of strings for recently visited repositories. This setting is automatically managed by the extension.
 
 ## Questions & Feedback
 

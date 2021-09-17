@@ -1,9 +1,9 @@
 import * as vscode from 'vscode'
 import { BrowseQuickPickItem } from '../commands/SourcegraphQuickPick'
 import SourcegraphUri from '../file-system/SourcegraphUri'
+import readConfiguration from './readConfiguration'
 
-const config = vscode.workspace.getConfiguration('sourcegraph')
-const settingKey = 'recentlyVisitedFiles'
+const settingKey = 'recentlyOpenFiles'
 
 export default {
     load: loadRecentlyVisitedFilesSetting,
@@ -11,6 +11,7 @@ export default {
 }
 
 function updateRecentlyVisitedFilesSetting(newValue: string): void {
+    const config = readConfiguration()
     const oldValues = config.get<string[]>(settingKey, [])
     if (!oldValues.includes(newValue)) {
         config.update(settingKey, [newValue, ...oldValues].slice(0, 10))
@@ -18,6 +19,7 @@ function updateRecentlyVisitedFilesSetting(newValue: string): void {
 }
 
 function loadRecentlyVisitedFilesSetting(): BrowseQuickPickItem[] {
+    const config = readConfiguration()
     const settingValues = config.get<string[]>(settingKey, [])
     const result: BrowseQuickPickItem[] = []
     const validSettingValues: string[] = []
@@ -46,7 +48,7 @@ function parseRecentlyVisitedFile(settingValue: string): BrowseQuickPickItem | u
                 uri: uri.uri,
                 label: uri.path,
                 description: uri.repositoryName,
-                detail: 'Recently visited',
+                detail: 'Recently open',
                 unresolvedRepositoryName: uri.repositoryName,
             }
         }

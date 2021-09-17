@@ -1,3 +1,3 @@
-import * as vscode from 'vscode'
+import readConfiguration from './readConfiguration'
 
-export default vscode.workspace.getConfiguration('sourcegraph').get<boolean>('debug', false)
+export default readConfiguration().get<boolean>('debug', false)

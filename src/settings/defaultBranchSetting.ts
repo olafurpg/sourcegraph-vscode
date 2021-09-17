@@ -1,9 +1,9 @@
-import vscode from 'vscode'
+import readConfiguration from './readConfiguration'
 
 export function defaultBranchSetting(): string {
     // has default value
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const branch = vscode.workspace.getConfiguration('sourcegraph').get<string>('defaultBranch')!
+    const branch = readConfiguration().get<string>('defaultBranch')!
 
     return branch
 }

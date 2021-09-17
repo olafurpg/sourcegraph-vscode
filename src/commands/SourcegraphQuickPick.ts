@@ -14,7 +14,7 @@ export interface BrowseQuickPickItem extends vscode.QuickPickItem {
 }
 
 export class SourcegraphQuickPick {
-    private recentlyVisitedItems: BrowseQuickPickItem[] = []
+    private recentlyOpenItems: BrowseQuickPickItem[] = []
     private valueEmitter = new vscode.EventEmitter<NewQuickPickValue>()
     public readonly pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
     public onDidChangeValue: vscode.Event<NewQuickPickValue> = this.valueEmitter.event
@@ -24,7 +24,7 @@ export class SourcegraphQuickPick {
     public async showQuickPickAndGetUserInput(): Promise<SourcegraphUri> {
         return new Promise((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
-            this.pick.items = this.recentlyVisitedItems
+            this.pick.items = this.recentlyOpenItems
             let pendingRequests: vscode.CancellationTokenSource = new vscode.CancellationTokenSource()
             const onCancelableDidChangeValue = async (value: string) => {
                 if (pendingRequests) {

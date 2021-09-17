@@ -4,18 +4,18 @@ import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemP
 import SourcegraphUri from '../file-system/SourcegraphUri'
 import openSourcegraphUriCommand from './openSourcegraphUriCommand'
 import { BrowseQuickPickItem, SourcegraphQuickPick } from './SourcegraphQuickPick'
-import recentlyVisitedRepositoriesSetting from '../settings/recentlyVisitedRepositoriesSetting'
+import recentlyOpenRepositoriesSetting from '../settings/recentlyOpenRepositoriesSetting'
 
 export default async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     const sg = new SourcegraphQuickPick(fs)
     sg.pick.title = 'Type in a repository or paste a Sourcegraph URL'
     sg.pick.matchOnDescription = true
     sg.pick.matchOnDetail = true
-    const recentlyVisitedRepositories = recentlyVisitedRepositoriesSetting.load()
-    sg.pick.items = recentlyVisitedRepositories
+    const recentlyOpenRepositories = recentlyOpenRepositoriesSetting.load()
+    sg.pick.items = recentlyOpenRepositories
     sg.onDidChangeValue(async query => {
         if (query.text === '') {
-            sg.pick.items = recentlyVisitedRepositories
+            sg.pick.items = recentlyOpenRepositories
             return
         }
         if (query.text.startsWith('https://sourcegraph.com')) {
@@ -23,7 +23,7 @@ export default async function goToRepositoryCommand(fs: SourcegraphFileSystemPro
                 const uri = SourcegraphUri.parse(query.text)
                 const item: BrowseQuickPickItem = {
                     uri: uri.uri,
-                    label: recentlyVisitedRepositoriesSetting.label(uri.repositoryName),
+                    label: recentlyOpenRepositoriesSetting.label(uri.repositoryName),
                     description: uri.path,
                     unresolvedRepositoryName: uri.repositoryName,
                     detail: query.text,
@@ -38,15 +38,15 @@ export default async function goToRepositoryCommand(fs: SourcegraphFileSystemPro
         const repos = await repositoriesQuery(query.text, query.token)
         if (!query.token.isCancellationRequested) {
             const queryItems: BrowseQuickPickItem[] = repos.map(repo => ({
-                label: recentlyVisitedRepositoriesSetting.label(repo),
+                label: recentlyOpenRepositoriesSetting.label(repo),
                 uri: '',
                 unresolvedRepositoryName: repo,
             }))
-            sg.pick.items = [...queryItems, ...recentlyVisitedRepositories]
+            sg.pick.items = [...queryItems, ...recentlyOpenRepositories]
             sg.pick.busy = false
         }
     })
     const uri = await sg.showQuickPickAndGetUserInput()
-    recentlyVisitedRepositoriesSetting.update({ label: uri.repositoryName, uri: uri.uri })
+    recentlyOpenRepositoriesSetting.update({ label: uri.repositoryName, uri: uri.uri })
     await openSourcegraphUriCommand(uri)
 }

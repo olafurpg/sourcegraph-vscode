@@ -1,9 +1,7 @@
 import * as vscode from 'vscode'
 import { BrowseQuickPickItem as SourcegraphQuickPickItem } from '../commands/SourcegraphQuickPick'
 import SourcegraphUri from '../file-system/SourcegraphUri'
-
-const config = vscode.workspace.getConfiguration('sourcegraph')
-const settingKey = 'recentlyVisitedRepositories'
+import readConfiguration from './readConfiguration'
 
 export default {
     label: repositoryLabel,
@@ -16,16 +14,20 @@ export interface RecentlyBrowsedRepositoryItem {
     uri: string
 }
 
+const settingKey = 'recentlyOpenRepositories'
+
 function repositoryLabel(repositoryName: string): string {
     return repositoryName.startsWith('github.com') ? `\$(mark-github) ${repositoryName}` : repositoryName
 }
 
 function updateRecentlyBrowsedRepositoriesSetting(newValue: RecentlyBrowsedRepositoryItem): void {
+    const config = readConfiguration()
     const oldSettingValues = config.get<any[]>(settingKey, []).filter(item => item?.label !== newValue.label)
     config.update(settingKey, [newValue, ...oldSettingValues].slice(0, 10), vscode.ConfigurationTarget.Global)
 }
 
 function loadRecentlyBrowsedRepositoriesSetting(): SourcegraphQuickPickItem[] {
+    const config = readConfiguration()
     const result: SourcegraphQuickPickItem[] = []
     const settingValues = config.get<any[]>(settingKey, [])
     const validSettingValues: RecentlyBrowsedRepositoryItem[] = []
@@ -44,7 +46,7 @@ function loadRecentlyBrowsedRepositoriesSetting(): SourcegraphQuickPickItem[] {
                 uri: uri.uri,
                 label: repositoryLabel(label),
                 description: uri.path,
-                detail: 'Recently visited',
+                detail: 'Recently open',
             })
         } catch (_error) {}
     }
