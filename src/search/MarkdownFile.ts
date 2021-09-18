@@ -1,4 +1,4 @@
-export default class MarkdownFile {
+export class MarkdownFile {
     public static parseContent(content: string): MarkdownFile {
         return new MarkdownFile(parseMarkdownParts(content))
     }
@@ -21,30 +21,30 @@ export default class MarkdownFile {
 function parseMarkdownParts(content: string): MarkdownPart[] {
     const lines = content.split(/\r?\n/g)
     const result: MarkdownPart[] = []
-    let i = 0
+    let index = 0
     let markupBuffer: string[] = []
-    function flushMarkupBuffer() {
+    const flushMarkupBuffer = (): void => {
         if (markupBuffer.length > 0) {
             result.push(new MarkdownPart(MarkdownPartKind.Markup, markupBuffer.join('\n')))
             markupBuffer = []
         }
     }
-    while (i < lines.length) {
-        const line = lines[i]
+    while (index < lines.length) {
+        const line = lines[index]
         if (line.startsWith('```sourcegraph')) {
             flushMarkupBuffer()
-            i += 1
+            index += 1
             const query: string[] = []
             let isEmittedPart = false
-            while (i < lines.length) {
-                const queryLine = lines[i]
+            while (index < lines.length) {
+                const queryLine = lines[index]
                 if (queryLine.startsWith('```')) {
                     result.push(new MarkdownPart(MarkdownPartKind.CodeFence, query.join('\n'), line, queryLine))
                     isEmittedPart = true
                     break
                 } else {
                     query.push(queryLine)
-                    i += 1
+                    index += 1
                 }
             }
             if (!isEmittedPart) {
@@ -53,7 +53,7 @@ function parseMarkdownParts(content: string): MarkdownPart[] {
         } else {
             markupBuffer.push(line)
         }
-        i += 1
+        index += 1
     }
     flushMarkupBuffer()
     return result

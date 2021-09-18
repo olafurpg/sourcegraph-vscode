@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import readConfiguration from './readConfiguration'
+import { readConfiguration } from './readConfiguration'
 
 export function endpointSetting(): string {
     // has default value

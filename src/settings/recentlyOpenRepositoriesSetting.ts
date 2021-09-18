@@ -1,9 +1,9 @@
 import * as vscode from 'vscode'
 import { BrowseQuickPickItem as SourcegraphQuickPickItem } from '../commands/SourcegraphQuickPick'
-import SourcegraphUri from '../file-system/SourcegraphUri'
-import readConfiguration from './readConfiguration'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
+import { readConfiguration } from './readConfiguration'
 
-export default {
+export const recentlyOpenRepositoriesSetting = {
     label: repositoryLabel,
     load: loadRecentlyBrowsedRepositoriesSetting,
     update: updateRecentlyBrowsedRepositoriesSetting,
@@ -17,13 +17,13 @@ export interface RecentlyBrowsedRepositoryItem {
 const settingKey = 'recentlyOpenRepositories'
 
 function repositoryLabel(repositoryName: string): string {
-    return repositoryName.startsWith('github.com') ? `\$(mark-github) ${repositoryName}` : repositoryName
+    return repositoryName.startsWith('github.com') ? `$(mark-github) ${repositoryName}` : repositoryName
 }
 
-function updateRecentlyBrowsedRepositoriesSetting(newValue: RecentlyBrowsedRepositoryItem): void {
+async function updateRecentlyBrowsedRepositoriesSetting(newValue: RecentlyBrowsedRepositoryItem): Promise<void> {
     const config = readConfiguration()
     const oldSettingValues = config.get<any[]>(settingKey, []).filter(item => item?.label !== newValue.label)
-    config.update(settingKey, [newValue, ...oldSettingValues].slice(0, 10), vscode.ConfigurationTarget.Global)
+    return config.update(settingKey, [newValue, ...oldSettingValues].slice(0, 10), vscode.ConfigurationTarget.Global)
 }
 
 function loadRecentlyBrowsedRepositoriesSetting(): SourcegraphQuickPickItem[] {
@@ -48,10 +48,14 @@ function loadRecentlyBrowsedRepositoriesSetting(): SourcegraphQuickPickItem[] {
                 description: uri.path,
                 detail: 'Recently open',
             })
-        } catch (_error) {}
+            // eslint-disable-next-line no-empty
+        } catch {}
     }
     if (result.length !== settingValues.length) {
-        config.update(settingKey, result, vscode.ConfigurationTarget.Global)
+        config.update(settingKey, result, vscode.ConfigurationTarget.Global).then(
+            () => {},
+            () => {}
+        )
     }
     return result
 }

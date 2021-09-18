@@ -1,4 +1,4 @@
-import readConfiguration from './readConfiguration'
+import { readConfiguration } from './readConfiguration'
 
 export function remoteUrlReplacementsSetting(): Record<string, string> {
     // has default value

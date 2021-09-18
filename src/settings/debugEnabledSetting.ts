@@ -1,3 +1,5 @@
-import readConfiguration from './readConfiguration'
+import { readConfiguration } from './readConfiguration'
 
-export default readConfiguration().get<boolean>('debug', false)
+export function debugEnabledSetting(): boolean {
+    return readConfiguration().get<boolean>('debug', false)
+}

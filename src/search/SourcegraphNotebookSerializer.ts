@@ -1,15 +1,15 @@
 import { TextDecoder, TextEncoder } from 'util'
 import * as vscode from 'vscode'
-import log from '../log'
-import openSourcegraphUriCommand from '../commands/openSourcegraphUriCommand'
-import searchHtml from './searchHtml'
+import { log } from '../log'
+import { openSourcegraphUriCommand } from '../commands/openSourcegraphUriCommand'
+import { searchHtml } from './searchHtml'
 import { SearchPatternType } from './scanner'
-import MarkdownFile, { MarkdownPart, MarkdownPartKind } from './MarkdownFile'
-import SourcegraphUri from '../file-system/SourcegraphUri'
-import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
+import { MarkdownPart, MarkdownPartKind, MarkdownFile } from './MarkdownFile'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import { endpointHostnameSetting } from '../settings/endpointSetting'
 
-export default class SourcegraphNotebookSerializer implements vscode.NotebookSerializer {
+export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer {
     private readonly decoder = new TextDecoder()
     private readonly encoder = new TextEncoder()
     private readonly messageChannel = vscode.notebooks.createRendererMessaging('sourcegraph-location-renderer')
@@ -23,16 +23,16 @@ export default class SourcegraphNotebookSerializer implements vscode.NotebookSer
         )
         controller.supportedLanguages = ['sourcegraph']
         controller.supportsExecutionOrder = true
-        controller.executeHandler = this.executeNotebook
+        controller.executeHandler = (cells, notebook, controller) => this.executeNotebook(cells, notebook, controller)
         this.messageChannel.onDidReceiveMessage(async event => {
-            const uriString = event.message?.uri
+            const uriString: unknown = event.message?.uri
             if (event.message?.request === 'openEditor' && typeof uriString === 'string') {
                 let uri = SourcegraphUri.parse(uriString)
                 if (!uri.revision) {
                     uri = uri.withRevision((await fs.repositoryMetadata(uri.repositoryName))?.defaultBranch)
                 }
-                openSourcegraphUriCommand(uri)
-            } else if (event.message?.request === 'logMessage') {
+                await openSourcegraphUriCommand(uri)
+            } else if (event.message?.request === 'logMessage' && typeof event.message?.message === 'string') {
                 log.appendLine(event.message.message)
             }
         })
@@ -54,7 +54,7 @@ export default class SourcegraphNotebookSerializer implements vscode.NotebookSer
                     SearchPatternType.literal,
                     execution.token
                 )
-                execution.replaceOutput(
+                await execution.replaceOutput(
                     new vscode.NotebookCellOutput([
                         new vscode.NotebookCellOutputItem(
                             new TextEncoder().encode(
@@ -68,15 +68,20 @@ export default class SourcegraphNotebookSerializer implements vscode.NotebookSer
                 )
                 execution.end(true, Date.now())
             } catch (error) {
-                execution.replaceOutput(
-                    new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.text(`ERROR: ${error}`)])
+                const message = error instanceof Error ? error.message : JSON.stringify(error)
+                await execution.replaceOutput(
+                    new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.text(`ERROR: ${message}`)])
                 )
                 execution.end(false, Date.now())
             }
         }
     }
 
-    public deserializeNotebook(data: Uint8Array, token: vscode.CancellationToken): vscode.NotebookData {
+    public deserializeNotebook(
+        data: Uint8Array,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _token: vscode.CancellationToken
+    ): vscode.NotebookData {
         const content = this.decoder.decode(data)
         const file = MarkdownFile.parseContent(content)
         const cells: vscode.NotebookCellData[] = []
@@ -97,7 +102,11 @@ export default class SourcegraphNotebookSerializer implements vscode.NotebookSer
         return { cells }
     }
 
-    public serializeNotebook(data: vscode.NotebookData, token: vscode.CancellationToken): Uint8Array {
+    public serializeNotebook(
+        data: vscode.NotebookData,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _token: vscode.CancellationToken
+    ): Uint8Array {
         const parts: MarkdownPart[] = []
         for (const cell of data.cells) {
             if (cell.kind === vscode.NotebookCellKind.Code) {

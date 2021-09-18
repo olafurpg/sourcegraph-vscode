@@ -1,8 +1,8 @@
 import * as vscode from 'vscode'
-import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
-import hoverQuery from '../queries/hoverQuery'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
+import { hoverQuery } from '../queries/hoverQuery'
 
-export default class SourcegraphHoverProvider implements vscode.HoverProvider {
+export class SourcegraphHoverProvider implements vscode.HoverProvider {
     constructor(private readonly fs: SourcegraphFileSystemProvider) {}
     public async provideHover(
         document: vscode.TextDocument,

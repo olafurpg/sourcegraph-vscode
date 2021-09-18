@@ -38,7 +38,7 @@
         "mimeTypes": [
           "application/sourcegraph-location"
         ],
-        "entrypoint": "./src/notebook/SourcegraphLocationRenderer.js",
+        "entrypoint": "./src/search/SourcegraphLocationRenderer.js",
         "requiresMessaging": "always"
       }
     ],

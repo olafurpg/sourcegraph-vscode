@@ -1,8 +1,8 @@
 import * as vscode from 'vscode'
-import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
-import definitionQuery from '../queries/definitionQuery'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
+import { definitionQuery } from '../queries/definitionQuery'
 
-export default class SourcegraphDefinitionProvider implements vscode.DefinitionProvider {
+export class SourcegraphDefinitionProvider implements vscode.DefinitionProvider {
     constructor(private readonly fs: SourcegraphFileSystemProvider) {}
     public async provideDefinition(
         document: vscode.TextDocument,

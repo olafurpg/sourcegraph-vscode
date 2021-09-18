@@ -1,6 +1,6 @@
 import assert from 'assert'
 import { FileTree } from './FileTree'
-import SourcegraphUri from './SourcegraphUri'
+import { SourcegraphUri } from './SourcegraphUri'
 
 const tree = new FileTree(SourcegraphUri.parse('https://sourcegraph.com/sourcegraph-vscode@v8'), [
     '.eslintrc.json',
@@ -38,7 +38,7 @@ function checkChildren(directory: string, expected: string[]) {
         for (const childUri of childUris) {
             const uri = SourcegraphUri.parse(childUri)
             if (uri.path) {
-                const path = uri.isDirectory() ? uri.path + `/` : uri.path
+                const path = uri.isDirectory() ? uri.path + '/' : uri.path
                 obtained.push(path)
             }
         }

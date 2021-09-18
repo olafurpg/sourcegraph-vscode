@@ -4,7 +4,7 @@ import { Position } from '../queries/Range'
 /**
  * SourcegraphUri encodes a URI like `sourcegraph://HOST/REPOSITORY@REVISION/-/blob/PATH?L1337`.
  */
-export default class SourcegraphUri {
+export class SourcegraphUri {
     private constructor(
         public readonly uri: string,
         public readonly host: string,
@@ -18,7 +18,7 @@ export default class SourcegraphUri {
         const newRevisionPath = newRevision ? `@${newRevision}` : ''
         return SourcegraphUri.parse(
             `sourcegraph://${this.host}/${this.repositoryName}${newRevisionPath}/-/blob/${
-                this.path
+                this.path || ''
             }${this.positionSuffix()}`
         )
     }
@@ -34,7 +34,7 @@ export default class SourcegraphUri {
 
     public dirname(): string {
         const parts = (this.path || '').split('/')
-        return parts.slice(0, parts.length - 1).join('/')
+        return parts.slice(0, -1).join('/')
     }
 
     public parentUri(): string | undefined {
@@ -149,7 +149,7 @@ export default class SourcegraphUri {
             //     }
             // }
         }
-        const isDirectory = uri.includes(`/-/tree/`)
+        const isDirectory = uri.includes('/-/tree/')
         return SourcegraphUri.fromParts(url.host, repositoryName, { revision, path, position, isDirectory })
     }
 }

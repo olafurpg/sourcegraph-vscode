@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import { SearchPatternType } from './scanner'
 import { searchQueryResult } from '../queries/searchQuery'
 
-export default async function searchHtml(
+export async function searchHtml(
     host: string,
     query: string,
     patternType: SearchPatternType,
@@ -46,9 +46,9 @@ export default async function searchHtml(
                 }
                 const end = start + length - 1
                 highlightedPreview.push(escapeHtml(preview.slice(index, start)))
-                highlightedPreview.push(`<mark>`)
+                highlightedPreview.push('<mark>')
                 highlightedPreview.push(escapeHtml(preview.slice(start, end)))
-                highlightedPreview.push(`</mark>`)
+                highlightedPreview.push('</mark>')
                 index = end
             }
             highlightedPreview.push(escapeHtml(preview.slice(index, preview.length)))

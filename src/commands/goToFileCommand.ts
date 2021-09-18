@@ -1,35 +1,39 @@
-import openSourcegraphUriCommand from './openSourcegraphUriCommand'
-import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
+import { openSourcegraphUriCommand } from './openSourcegraphUriCommand'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import { SourcegraphQuickPick } from './SourcegraphQuickPick'
-import recentlyOpenFilesSetting from '../settings/recentlyOpenFilesSetting'
+import { recentlyOpenFilesSetting } from '../settings/recentlyOpenFilesSetting'
+import { log } from '../log'
 
-export default async function goToFileCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
-    const sg = new SourcegraphQuickPick(fs)
-    sg.pick.title = 'Go to a file from the open Sourcegraph repositories'
+export async function goToFileCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
+    const quick = new SourcegraphQuickPick(fs)
+    quick.pick.title = 'Go to a file from the open Sourcegraph repositories'
     const recentlyOpenFiles = recentlyOpenFilesSetting.load()
     const fileItems = [...recentlyOpenFiles]
-    sg.pick.items = fileItems
-    sg.pick.busy = true
-    fs.allFileFromOpenRepositories().then(allFiles => {
-        for (const repo of allFiles) {
-            for (const file of repo.fileNames) {
-                if (file === '') {
-                    continue
+    quick.pick.items = fileItems
+    quick.pick.busy = true
+    fs.allFileFromOpenRepositories().then(
+        allFiles => {
+            for (const repo of allFiles) {
+                for (const file of repo.fileNames) {
+                    if (file === '') {
+                        continue
+                    }
+                    // Intentionally avoid using `SourcegraphUri.parse()` for
+                    // performance reasons.  This loop is a hot path for large
+                    // repositories like chromium/chromium with ~400k files.
+                    fileItems.push({
+                        uri: `${repo.repositoryUri}/-/blob/${file}`,
+                        label: file,
+                        description: repo.repositoryName,
+                    })
                 }
-                // Intentionally avoid using `SourcegraphUri.parse()` for
-                // performance reasons.  This loop is a hot path for large
-                // repositories like chromium/chromium with ~400k files.
-                fileItems.push({
-                    uri: `${repo.repositoryUri}/-/blob/${file}`,
-                    label: file,
-                    description: repo.repositoryName,
-                })
             }
-        }
-        sg.pick.busy = false
-        sg.pick.items = fileItems
-    })
-    const uri = await sg.showQuickPickAndGetUserInput()
-    recentlyOpenFilesSetting.update(uri.uri)
+            quick.pick.busy = false
+            quick.pick.items = fileItems
+        },
+        error => log.error('fs.allFileFromOpenRepositories', error)
+    )
+    const uri = await quick.showQuickPickAndGetUserInput()
+    await recentlyOpenFilesSetting.update(uri.uri)
     await openSourcegraphUriCommand(uri)
 }

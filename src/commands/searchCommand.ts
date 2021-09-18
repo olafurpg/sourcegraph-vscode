@@ -5,7 +5,7 @@ import { endpointSetting } from '../settings/endpointSetting'
 /**
  * The command implementation for searching on Sourcegraph.com
  */
-export default async function searchCommand(): Promise<void> {
+export async function searchCommand(): Promise<void> {
     await vscode.window.showInputBox().then(value => {
         if (!value) {
             return

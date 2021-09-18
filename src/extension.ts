@@ -1,22 +1,23 @@
 import * as vscode from 'vscode'
-import SourcegraphFileSystemProvider from './file-system/SourcegraphFileSystemProvider'
-import SourcegraphSemanticTokenProvider from './search/SourcegraphSemanticTokenProvider'
-import goToFileCommand from './commands/goToFileCommand'
-import createNewNotebookCommand from './commands/createNewNotebookCommand'
-import openSourcegraphUriCommand from './commands/openSourcegraphUriCommand'
-import SourcegraphUri from './file-system/SourcegraphUri'
-import goToRepositoryCommand from './commands/goToRepositoryCommand'
-import openCommand from './commands/openCommand'
-import searchCommand from './commands/searchCommand'
-import SourcegraphCompletionItemProvider from './search/SourcegraphCompletionItemProvider'
-import SourcegraphNotebookSerializer from './search/SourcegraphNotebookSerializer'
-import log from './log'
-import searchSelectionCommand from './commands/searchSelectionCommand'
-import SourcegraphHoverProvider from './code-intel/SourcegraphHoverProvider'
-import SourcegraphDefinitionProvider from './code-intel/SourcegraphDefinitionProvider'
-import SourcegraphReferenceProvider from './code-intel/SourcegraphReferenceProvider'
-import SourcegraphTreeDataProvider from './file-system/SourcegraphTreeDataProvider'
+import { SourcegraphFileSystemProvider } from './file-system/SourcegraphFileSystemProvider'
+import { SourcegraphSemanticTokenProvider } from './search/SourcegraphSemanticTokenProvider'
+import { goToFileCommand } from './commands/goToFileCommand'
+import { createNewNotebookCommand } from './commands/createNewNotebookCommand'
+import { openSourcegraphUriCommand } from './commands/openSourcegraphUriCommand'
+import { SourcegraphUri } from './file-system/SourcegraphUri'
+import { goToRepositoryCommand } from './commands/goToRepositoryCommand'
+import { openCommand } from './commands/openCommand'
+import { searchCommand } from './commands/searchCommand'
+import { SourcegraphCompletionItemProvider } from './search/SourcegraphCompletionItemProvider'
+import { SourcegraphNotebookSerializer } from './search/SourcegraphNotebookSerializer'
+import { log } from './log'
+import { searchSelectionCommand } from './commands/searchSelectionCommand'
+import { SourcegraphHoverProvider } from './code-intel/SourcegraphHoverProvider'
+import { SourcegraphDefinitionProvider } from './code-intel/SourcegraphDefinitionProvider'
+import { SourcegraphReferenceProvider } from './code-intel/SourcegraphReferenceProvider'
+import { SourcegraphTreeDataProvider } from './file-system/SourcegraphTreeDataProvider'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const { version } = require('../package.json')
 
 /**
@@ -108,6 +109,7 @@ export function activate(context: vscode.ExtensionContext): void {
             if (typeof uri === 'string') {
                 await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
             } else {
+                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
                 log.error(`extension.openFile(${uri}) argument is not a string`)
             }
         })
@@ -121,9 +123,12 @@ export function activate(context: vscode.ExtensionContext): void {
         new SourcegraphCompletionItemProvider()
     )
     context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(async editor => await treeDataProvider.didFocus(editor?.document.uri))
+        vscode.window.onDidChangeActiveTextEditor(editor => treeDataProvider.didFocus(editor?.document.uri))
     )
-    treeDataProvider.didFocus(vscode.window.activeTextEditor?.document.uri)
+    treeDataProvider.didFocus(vscode.window.activeTextEditor?.document.uri).then(
+        () => {},
+        () => {}
+    )
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(fs), {})
 }
 

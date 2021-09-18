@@ -1,5 +1,5 @@
 import assert from 'assert'
-import SourcegraphUri from './SourcegraphUri'
+import { SourcegraphUri } from './SourcegraphUri'
 
 function check(input: string, expected: { repositoryName: string; revision: string; path: string }) {
     it(`parseBrowserRepoURL('${input})'`, () => {

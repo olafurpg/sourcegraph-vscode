@@ -1,13 +1,9 @@
 import { spawn } from 'child_process'
 import { CancellationToken } from 'vscode'
-import log from '../log'
-import debugEnabledSetting from '../settings/debugEnabledSetting'
+import { log } from '../log'
+import { debugEnabledSetting } from '../settings/debugEnabledSetting'
 
-export default function graphqlQuery<A, B>(
-    query: string,
-    variables: A,
-    token: CancellationToken
-): Promise<B | undefined> {
+export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
     return new Promise<B | undefined>((resolve, reject) => {
         const stdoutBuffer: string[] = []
         const onExit = (exit: number) => {
@@ -33,7 +29,7 @@ export default function graphqlQuery<A, B>(
             '-vars',
             JSON.stringify(variables),
         ]
-        if (debugEnabledSetting) {
+        if (debugEnabledSetting()) {
             log.appendLine('src ' + command.map(part => `'${part}'`).join(' '))
         }
         const proc = spawn('src', command)

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
-import log from '../log'
-import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
-import SourcegraphUri from '../file-system/SourcegraphUri'
+import { log } from '../log'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
 
 export interface NewQuickPickValue {
     text: string
@@ -21,7 +21,7 @@ export class SourcegraphQuickPick {
     public readonly pick = vscode.window.createQuickPick<BrowseQuickPickItem>()
     public onDidChangeValue: vscode.Event<NewQuickPickValue> = this.didPickNewValue.event
 
-    public async showQuickPickAndGetUserInput(): Promise<SourcegraphUri> {
+    public showQuickPickAndGetUserInput(): Promise<SourcegraphUri> {
         return new Promise<SourcegraphUri>((resolve, reject) => {
             let selection: BrowseQuickPickItem | undefined = undefined
             this.pick.items = this.recentlyOpenItems

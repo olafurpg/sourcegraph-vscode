@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import graphqlQuery from './graphqlQuery'
+import { graphqlQuery } from './graphqlQuery'
 import { TextEncoder } from 'util'
 import gql from 'tagged-template-noop'
 
@@ -9,7 +9,7 @@ export interface FileContents {
     byteSize: number
 }
 
-export default async function contentQuery(
+export async function contentQuery(
     parameters: ContentParameters,
     token: vscode.CancellationToken
 ): Promise<FileContents | undefined> {

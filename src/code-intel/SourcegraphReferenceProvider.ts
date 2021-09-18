@@ -1,11 +1,12 @@
 import * as vscode from 'vscode'
-import SourcegraphFileSystemProvider from '../file-system/SourcegraphFileSystemProvider'
-import SourcegraphUri from '../file-system/SourcegraphUri'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
 import { SearchPatternType } from '../search/scanner'
-import referencesQuery from '../queries/referencesQuery'
+import { referencesQuery } from '../queries/referencesQuery'
 import { searchQuery } from '../queries/searchQuery'
+import { endpointHostnameSetting } from '../settings/endpointSetting'
 
-export default class SourcegraphReferenceProvider implements vscode.ReferenceProvider {
+export class SourcegraphReferenceProvider implements vscode.ReferenceProvider {
     constructor(private readonly fs: SourcegraphFileSystemProvider) {}
 
     public async provideReferences(
@@ -43,9 +44,6 @@ export default class SourcegraphReferenceProvider implements vscode.ReferencePro
             })
             .join(' OR ')
         const query = `(${repos}) AND ${document.getText()}`
-        return await searchQuery(srcEndpointHostname(), query, SearchPatternType.literal, token)
+        return searchQuery(endpointHostnameSetting(), query, SearchPatternType.literal, token)
     }
-}
-function srcEndpointHostname(): string {
-    throw new Error('Function not implemented.')
 }

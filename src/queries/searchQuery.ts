@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from '../search/scanner'
-import graphqlQuery from './graphqlQuery'
+import { graphqlQuery } from './graphqlQuery'
 import gql from 'tagged-template-noop'
 
 export function searchQueryResult(

@@ -5,7 +5,7 @@ import { endpointSetting } from '../settings/endpointSetting'
 /**
  * The command implementation for searching a cursor selection on Sourcegraph.
  */
-export default async function searchSelectionCommand(extensionVersion: string): Promise<void> {
+export async function searchSelectionCommand(extensionVersion: string): Promise<void> {
     const editor = vscode.window.activeTextEditor
     if (!editor) {
         throw new Error('No active editor')
@@ -22,7 +22,7 @@ export default async function searchSelectionCommand(extensionVersion: string): 
     }
 
     // Search in browser.
-    await open(
+    open(
         `${endpointSetting()}/-/editor` +
             `?remote_url=${encodeURIComponent(remoteURL)}` +
             `&branch=${encodeURIComponent(branch)}` +

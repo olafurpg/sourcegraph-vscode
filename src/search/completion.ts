@@ -54,7 +54,11 @@ const completeStart = (): vscode.CompletionList => ({
     ),
 })
 
-async function completeDefault(token: Token, globbing: boolean): Promise<vscode.CompletionList> {
+function completeDefault(
+    token: Token,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _globbing: boolean
+): vscode.CompletionList {
     // Offer autocompletion of filter values
     const staticSuggestions = FILTER_TYPE_COMPLETIONS.map(
         (suggestion): vscode.CompletionItem => ({
@@ -75,12 +79,12 @@ async function completeDefault(token: Token, globbing: boolean): Promise<vscode.
     return { items: staticSuggestions }
 }
 
-async function completeFilter(
+function completeFilter(
     token: Filter,
     column: number,
     globbing: boolean,
     isSourcegraphDotCom?: boolean
-): Promise<vscode.CompletionList | null> {
+): vscode.CompletionList | null {
     const { value } = token
     const completingValue = !value || value.range.start + 1 <= column
     if (!completingValue) {
@@ -93,7 +97,7 @@ async function completeFilter(
     let staticSuggestions: vscode.CompletionItem[] = []
     if (resolvedFilter.definition.discreteValues) {
         staticSuggestions = resolvedFilter.definition.discreteValues(token.value, isSourcegraphDotCom).map(
-            ({ label, insertText, asSnippet }, index): vscode.CompletionItem => ({
+            ({ label, insertText }, index): vscode.CompletionItem => ({
                 label,
                 sortText: index.toString().padStart(2, '1'), // suggestions sort by order in the list, not alphabetically (up to 99 values).
                 kind: vscode.CompletionItemKind.Value,
@@ -113,12 +117,12 @@ async function completeFilter(
  * Returns the completion items for a search query being typed in the Monaco query input,
  * including both static and dynamically fetched suggestions.
  */
-export async function getCompletionItems(
+export function getCompletionItems(
     tokens: Token[],
     { character }: Pick<vscode.Position, 'character'>,
     globbing: boolean,
     isSourcegraphDotCom?: boolean
-): Promise<vscode.CompletionList | null> {
+): vscode.CompletionList | null {
     character += 1
     if (character === 1) {
         // Show all filter suggestions on the first column.

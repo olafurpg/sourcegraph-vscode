@@ -1,6 +1,6 @@
 import { Range } from './Range'
 
-export default interface LocationNode {
+export interface LocationNode {
     resource: {
         path: string
         repository: {

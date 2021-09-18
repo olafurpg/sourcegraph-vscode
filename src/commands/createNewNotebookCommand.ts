@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 
-export default async function createNewNotebookCommand(): Promise<void> {
+export async function createNewNotebookCommand(): Promise<void> {
     await vscode.workspace.openNotebookDocument(
         'sourcegraph-notebook',
         new vscode.NotebookData([new vscode.NotebookCellData(vscode.NotebookCellKind.Code, '', 'sourcegraph')])

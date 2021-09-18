@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import graphqlQuery from '../queries/graphqlQuery'
+import { graphqlQuery } from './graphqlQuery'
 import gql from 'tagged-template-noop'
 
 export interface RepositoryMetadata {
@@ -10,7 +10,7 @@ export interface RepositoryMetadata {
     commitToReferenceName?: Map<string, string>
 }
 
-export default async function repositoryMetadataQuery(
+export async function repositoryMetadataQuery(
     parameters: RevisionParameters,
     token: vscode.CancellationToken
 ): Promise<RepositoryMetadata> {

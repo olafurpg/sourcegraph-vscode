@@ -1,10 +1,10 @@
 import * as vscode from 'vscode'
-import graphqlQuery from '../queries/graphqlQuery'
+import { graphqlQuery } from './graphqlQuery'
 import gql from 'tagged-template-noop'
-import PositionParameters from '../queries/PositionParameters'
-import LocationNode from '../queries/LocationNode'
+import { PositionParameters } from './PositionParameters'
+import { LocationNode } from './LocationNode'
 
-export default async function referencesQuery(
+export async function referencesQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<LocationNode[]> {

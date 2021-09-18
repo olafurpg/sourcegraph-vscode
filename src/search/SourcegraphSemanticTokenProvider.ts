@@ -2,10 +2,10 @@ import * as vscode from 'vscode'
 import { scanSearchQuery, SearchPatternType } from './scanner'
 import { decorate, DecoratedToken } from './decoratedToken'
 
-export default class SourcegraphSemanticTokenProvider
+export class SourcegraphSemanticTokenProvider
     implements vscode.DocumentSemanticTokensProvider, vscode.SemanticTokensLegend
 {
-    tokenTypes: string[] = [
+    public tokenTypes: string[] = [
         'namespace',
         'class',
         'enum',
@@ -29,10 +29,11 @@ export default class SourcegraphSemanticTokenProvider
         'regexp',
         'operator',
     ]
-    tokenModifiers: string[] = []
-    onDidChangeSemanticTokens?: vscode.Event<void> | undefined
-    provideDocumentSemanticTokens(
+    public tokenModifiers: string[] = []
+    public onDidChangeSemanticTokens?: vscode.Event<void> | undefined
+    public provideDocumentSemanticTokens(
         document: vscode.TextDocument,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         token: vscode.CancellationToken
     ): vscode.SemanticTokens {
         const builder = new vscode.SemanticTokensBuilder(this)
@@ -49,8 +50,6 @@ export default class SourcegraphSemanticTokenProvider
                         const range = new vscode.Range(start, end)
                         const type = sourcegraphDecoratedTokenTypeToSemanticTokenType(decoratedToken)
                         if (type) {
-                            if (!this.tokenTypes.includes(type)) {
-                            }
                             builder.push(range, type)
                         }
                     }
@@ -80,7 +79,6 @@ function sourcegraphDecoratedTokenTypeToSemanticTokenType(token: DecoratedToken)
             return 'regexp'
         case 'metaContextPrefix':
         case 'metaPredicate':
-        case 'metaRegexp':
         case 'metaRegexp':
         case 'metaRepoRevisionSeparator':
         case 'metaRevision':

@@ -1,15 +1,15 @@
 import * as vscode from 'vscode'
-import log from '../log'
-import SourcegraphFileSystemProvider from './SourcegraphFileSystemProvider'
+import { log } from '../log'
+import { SourcegraphFileSystemProvider } from './SourcegraphFileSystemProvider'
 import { emptyCancelationToken } from './emptyCancelationToken'
-import SourcegraphUri from './SourcegraphUri'
+import { SourcegraphUri } from './SourcegraphUri'
 
-export default class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<string> {
+export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<string> {
     constructor(private readonly fs: SourcegraphFileSystemProvider) {
         fs.onDidDownloadRepositoryFilenames(() => this.didChangeTreeData.fire(undefined))
     }
 
-    private isTreeViewVisible: boolean = false
+    private isTreeViewVisible = false
     private isExpandedNode = new Set<string>()
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
@@ -22,7 +22,10 @@ export default class SourcegraphTreeDataProvider implements vscode.TreeDataProvi
             const didBecomeVisible = !this.isTreeViewVisible && event.visible
             this.isTreeViewVisible = event.visible
             if (didBecomeVisible) {
-                this.didFocus(this.activeUri)
+                this.didFocus(this.activeUri).then(
+                    () => {},
+                    () => {}
+                )
             }
         })
         treeView.onDidExpandElement(event => {
@@ -44,14 +47,14 @@ export default class SourcegraphTreeDataProvider implements vscode.TreeDataProvi
         try {
             if (!uriString) {
                 const repos = [...this.fs.allRepositoryUris()]
-                return Promise.resolve(repos.map(repo => repo.replace('https://', 'sourcegraph://')))
+                return repos.map(repo => repo.replace('https://', 'sourcegraph://'))
             }
             const uri = SourcegraphUri.parse(uriString)
             const tree = await this.fs.getFileTree(uri)
             const result = tree?.directChildren(uri.path || '')
             return result
         } catch (error) {
-            log.error(`getChildren(${uriString})`, error)
+            log.error(`getChildren(${uriString || ''})`, error)
             return Promise.resolve(undefined)
         }
     }
@@ -125,7 +128,7 @@ export default class SourcegraphTreeDataProvider implements vscode.TreeDataProvi
         if (metadata?.defaultBranch && (!revision || revision === metadata?.defaultOid)) {
             revision = metadata.defaultBranch
         }
-        return `${uri.repositoryName}@${revision}`
+        return `${uri.repositoryName}@${revision || ''}`
     }
 
     private async getCollapsibleState(

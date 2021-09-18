@@ -1,5 +1,5 @@
 import * as path from 'path'
-import log from '../log'
+import { log } from '../log'
 import { defaultBranchSetting } from '../settings/defaultBranchSetting'
 import { remoteUrlReplacementsSetting } from '../settings/remoteUrlReplacementsSetting'
 import { gitHelpers } from './helpers'

@@ -1,10 +1,10 @@
-import SourcegraphUri from './SourcegraphUri'
+import { SourcegraphUri } from './SourcegraphUri'
 
 /**
  * Helper class to represent a flat list of relative file paths (type `string[]`) as a hierarchical file tree.
  */
 export class FileTree {
-    constructor(readonly uri: SourcegraphUri, readonly files: string[]) {
+    constructor(public readonly uri: SourcegraphUri, public readonly files: string[]) {
         files.sort()
     }
 
@@ -15,11 +15,6 @@ export class FileTree {
     // TODO: optimize this for very large repos like chromium/chromium. It's
     // usable in its current state but could be much faster if we use binary
     // search to skip unrelated paths.
-    /**
-     * Re
-     * @param directory
-     * @returns
-     */
     public directChildren(directory: string): string[] {
         const depth = this.depth(directory)
         const directFiles = new Set<string>()
@@ -39,8 +34,11 @@ export class FileTree {
                 const path = isDirect ? file : file.slice(0, file.indexOf('/', directory.length))
                 const kind = isDirect ? 'blob' : 'tree'
                 const uri = `sourcegraph://${this.uri.host}/${this.uri.repositoryName}${revision}/-/${kind}/${path}`
-                if (isDirect) directFiles.add(uri)
-                else directDirectories.add(uri)
+                if (isDirect) {
+                    directFiles.add(uri)
+                } else {
+                    directDirectories.add(uri)
+                }
             }
         }
         return [...directDirectories, ...directFiles]

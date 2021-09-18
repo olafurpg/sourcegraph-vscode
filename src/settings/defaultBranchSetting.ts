@@ -1,4 +1,4 @@
-import readConfiguration from './readConfiguration'
+import { readConfiguration } from './readConfiguration'
 
 export function defaultBranchSetting(): string {
     // has default value

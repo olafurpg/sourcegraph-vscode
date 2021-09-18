@@ -1,20 +1,20 @@
 import * as vscode from 'vscode'
 import { BrowseQuickPickItem } from '../commands/SourcegraphQuickPick'
-import SourcegraphUri from '../file-system/SourcegraphUri'
-import readConfiguration from './readConfiguration'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
+import { readConfiguration } from './readConfiguration'
 
 const settingKey = 'recentlyOpenFiles'
 
-export default {
+export const recentlyOpenFilesSetting = {
     load: loadRecentlyVisitedFilesSetting,
     update: updateRecentlyVisitedFilesSetting,
 }
 
-function updateRecentlyVisitedFilesSetting(newValue: string): void {
+async function updateRecentlyVisitedFilesSetting(newValue: string): Promise<void> {
     const config = readConfiguration()
     const oldValues = config.get<string[]>(settingKey, [])
     if (!oldValues.includes(newValue)) {
-        config.update(settingKey, [newValue, ...oldValues].slice(0, 10))
+        return config.update(settingKey, [newValue, ...oldValues].slice(0, 10))
     }
 }
 
@@ -31,7 +31,10 @@ function loadRecentlyVisitedFilesSetting(): BrowseQuickPickItem[] {
         }
     }
     if (validSettingValues.length !== settingValues.length) {
-        config.update(settingKey, validSettingValues, vscode.ConfigurationTarget.Global)
+        config.update(settingKey, validSettingValues, vscode.ConfigurationTarget.Global).then(
+            () => {},
+            () => {}
+        )
     }
     return result
 }
@@ -52,6 +55,7 @@ function parseRecentlyVisitedFile(settingValue: string): BrowseQuickPickItem | u
                 unresolvedRepositoryName: uri.repositoryName,
             }
         }
-    } catch (_error) {}
+        // eslint-disable-next-line no-empty
+    } catch {}
     return undefined
 }

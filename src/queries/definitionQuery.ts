@@ -1,10 +1,10 @@
-import PositionParameters from './PositionParameters'
+import { PositionParameters } from './PositionParameters'
 import * as vscode from 'vscode'
 import gql from 'tagged-template-noop'
-import graphqlQuery from './graphqlQuery'
-import LocationNode from './LocationNode'
+import { graphqlQuery } from './graphqlQuery'
+import { LocationNode } from './LocationNode'
 
-export default async function definitionQuery(
+export async function definitionQuery(
     parameters: PositionParameters,
     token: vscode.CancellationToken
 ): Promise<LocationNode[]> {

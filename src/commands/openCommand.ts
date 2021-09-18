@@ -6,7 +6,7 @@ import { repoInfo } from '../git'
 /**
  * The command implementation for opening a cursor selection on Sourcegraph.
  */
-export default async function openCommand(version: string): Promise<void> {
+export async function openCommand(version: string): Promise<void> {
     const editor = vscode.window.activeTextEditor
     if (!editor) {
         throw new Error('No active editor')
