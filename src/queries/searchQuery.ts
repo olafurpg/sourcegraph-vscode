@@ -29,6 +29,9 @@ export function searchQueryResult(
                 file {
                     url
                 }
+                repository {
+                    stars
+                }
                 lineMatches {
                     lineNumber
                     offsetAndLengths
@@ -89,6 +92,9 @@ export interface SearchResult {
 interface SearchResultNode {
     file?: {
         url?: string
+    }
+    repository?: {
+        stars?: number
     }
     lineMatches?: LineMatch[]
 }

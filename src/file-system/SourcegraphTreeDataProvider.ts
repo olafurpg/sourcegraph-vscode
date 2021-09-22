@@ -13,6 +13,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     private isExpandedNode = new Set<string>()
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
+    private didFocusToken = new vscode.CancellationTokenSource()
     private readonly didChangeTreeData = new vscode.EventEmitter<string | undefined>()
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.didChangeTreeData.event
 
@@ -65,11 +66,13 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     }
 
     public async didFocus(vscodeUri: vscode.Uri | undefined): Promise<void> {
+        this.didFocusToken.cancel()
+        this.didFocusToken = new vscode.CancellationTokenSource()
         this.activeUri = vscodeUri
         if (vscodeUri && vscodeUri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
             const uri = this.fs.sourcegraphUri(vscodeUri)
             await this.fs.downloadFiles(uri, uri.revision || '')
-            await this.didFocusString(uri, true)
+            await this.didFocusString(uri, true, this.didFocusToken.token)
         }
     }
 
@@ -101,12 +104,19 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         }
     }
 
-    private async didFocusString(uri: SourcegraphUri, isDestinationNode: boolean): Promise<void> {
+    private async didFocusString(
+        uri: SourcegraphUri,
+        isDestinationNode: boolean,
+        token: vscode.CancellationToken
+    ): Promise<void> {
         try {
             if (this.treeView) {
                 const parent = uri.parentUri()
                 if (parent && !this.isExpandedNode.has(parent)) {
-                    await this.didFocusString(SourcegraphUri.parse(parent), false)
+                    await this.didFocusString(SourcegraphUri.parse(parent), false, token)
+                }
+                if (token.isCancellationRequested) {
+                    return
                 }
                 await this.treeView.reveal(uri.uri, {
                     focus: true,

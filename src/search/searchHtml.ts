@@ -16,6 +16,8 @@ export async function searchHtml(
         if (!url) {
             continue
         }
+        const starCount = node?.repository?.stars
+        const stars = starCount ? ` ⭐ ${formatStarCount(starCount)}` : ''
         const lineMatches = node.lineMatches || []
         if (lineMatches.length === 0) {
             continue
@@ -55,7 +57,7 @@ export async function searchHtml(
             if (first) {
                 first = false
                 html.push('<p>')
-                html.push(`<code>${url}</code>`)
+                html.push(`<code>${url}${stars}</code>`)
                 html.push('<pre>')
             }
             const uri = `sourcegraph://${host}${url}?L${line + 1}:${character}`
@@ -71,6 +73,13 @@ export async function searchHtml(
         html.push('</p>')
     }
     return html.join('')
+}
+
+function formatStarCount(starCount: number): string {
+    if (starCount > 1000) {
+        return `${Math.round(starCount / 1000)}k`
+    }
+    return starCount.toLocaleString()
 }
 
 // FIXME: this method is copy pasted from Stackoverflow and should be replaced with a proper implementation

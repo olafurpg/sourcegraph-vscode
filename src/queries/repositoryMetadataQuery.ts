@@ -16,7 +16,7 @@ export async function repositoryMetadataQuery(
 ): Promise<RepositoryMetadata> {
     const response = await graphqlQuery<RevisionParameters, RevisionResult>(
         gql`
-            query Revision($repositoryName: String!) {
+            query RepositoryMetadata($repositoryName: String!) {
                 repositoryRedirect(name: $repositoryName) {
                     ... on Repository {
                         id
