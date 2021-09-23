@@ -40,22 +40,12 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
     private didChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>() // Never used.
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.didChangeFile.event
     public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        try {
-            const blob = await this.fetchBlob(this.sourcegraphUri(uri))
-            return {
-                mtime: blob.time,
-                ctime: blob.time,
-                size: blob.byteSize,
-                type: blob.type,
-            }
-        } catch {
-            const time = new Date().getMilliseconds()
-            return {
-                mtime: time,
-                ctime: time,
-                size: 0,
-                type: vscode.FileType.Directory,
-            }
+        const blob = await this.fetchBlob(this.sourcegraphUri(uri))
+        return {
+            mtime: blob.time,
+            ctime: blob.time,
+            size: blob.byteSize,
+            type: blob.type,
         }
     }
 
@@ -76,7 +66,7 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         const children = tree.directChildren(uri.path || '')
         return children.map(childUri => {
             const child = SourcegraphUri.parse(childUri)
-            const type = child.isDirectory() ? vscode.FileType.Directory : vscode.FileType.File
+            const type = child.isDirectory ? vscode.FileType.Directory : vscode.FileType.File
             return [child.basename(), type]
         })
     }

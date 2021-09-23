@@ -1,3 +1,4 @@
+import open from 'open'
 import * as vscode from 'vscode'
 import { repoInfo } from '../git'
 import { endpointSetting } from '../settings/endpointSetting'
@@ -22,7 +23,7 @@ export async function searchSelectionCommand(extensionVersion: string): Promise<
     }
 
     // Search in browser.
-    open(
+    await open(
         `${endpointSetting()}/-/editor` +
             `?remote_url=${encodeURIComponent(remoteURL)}` +
             `&branch=${encodeURIComponent(branch)}` +

@@ -3,14 +3,24 @@ import { CancellationToken } from 'vscode'
 import { log } from '../log'
 import { debugEnabledSetting } from '../settings/debugEnabledSetting'
 import { endpointHostnameSetting } from '../settings/endpointSetting'
+import { accessTokenSetting } from '../settings/accessTokenSetting'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
+    return accessTokenSetting().then(accessToken => graphqlQueryWithAccessToken(query, variables, token, accessToken))
+}
+
+export function graphqlQueryWithAccessToken<A, B>(
+    query: string,
+    variables: A,
+    token: CancellationToken,
+    accessToken: string
+): Promise<B | undefined> {
+    log.appendLine(`accessToken ${accessToken}`)
     return new Promise<B | undefined>((resolve, reject) => {
         const data = JSON.stringify({
             query,
             variables,
         })
-        const accessToken = process.env.SRC_ACCESS_TOKEN || ''
         const options: RequestOptions = {
             hostname: endpointHostnameSetting(),
             port: 443,

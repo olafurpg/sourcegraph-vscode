@@ -198,6 +198,13 @@
           "default": "https://sourcegraph.com",
           "description": "The base URL of the Sourcegraph instance to use."
         },
+        "sourcegraph.accessToken": {
+          "type": [
+            "string"
+          ],
+          "default": "",
+          "description": "The access token to query the Sourcegraph API. Create a new access token at https://sourcegraph.com/users/settings/tokens"
+        },
         "sourcegraph.remoteUrlReplacements": {
           "type": [
             "object"
