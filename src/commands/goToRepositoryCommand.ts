@@ -50,5 +50,5 @@ export async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): 
     })
     const uri = await quick.showQuickPickAndGetUserInput()
     await recentlyOpenRepositoriesSetting.update({ label: uri.repositoryName, uri: uri.uri })
-    await openSourcegraphUriCommand(uri)
+    await openSourcegraphUriCommand(fs, uri)
 }

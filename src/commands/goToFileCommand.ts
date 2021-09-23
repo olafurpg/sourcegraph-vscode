@@ -35,5 +35,5 @@ export async function goToFileCommand(fs: SourcegraphFileSystemProvider): Promis
     )
     const uri = await quick.showQuickPickAndGetUserInput()
     await recentlyOpenFilesSetting.update(uri.uri)
-    await openSourcegraphUriCommand(uri)
+    await openSourcegraphUriCommand(fs, uri)
 }

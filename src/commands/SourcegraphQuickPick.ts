@@ -69,19 +69,9 @@ export class SourcegraphQuickPick {
 
     private async resolveFileUri(selection: BrowseQuickPickItem): Promise<SourcegraphUri> {
         let uriString = selection.uri
-        if (selection.unresolvedRepositoryName) {
-            // Update the missing file path if it's missing
-            if (!uriString || !SourcegraphUri.parse(uriString).path) {
-                uriString = (await this.fs.defaultFileUri(selection.unresolvedRepositoryName)).uri
-            }
-
-            // Update the missing revision if it's missing
-            const uri = SourcegraphUri.parse(uriString)
-            if (!uri.revision) {
-                const metadata = await this.fs.repositoryMetadata(uri.repositoryName)
-                const revision = metadata?.defaultBranch || 'HEAD'
-                uriString = uri.withRevision(revision).uri
-            }
+        if (selection.unresolvedRepositoryName && (!uriString || !SourcegraphUri.parse(uriString).path)) {
+            // Update the missing file path
+            uriString = (await this.fs.defaultFileUri(selection.unresolvedRepositoryName)).uri
         }
         return SourcegraphUri.parse(uriString)
     }

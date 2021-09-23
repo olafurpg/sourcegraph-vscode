@@ -32,26 +32,34 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
     private fileNamesByRepository: Map<string, Promise<string[]>> = new Map()
     private metadata: Map<string, RepositoryMetadata> = new Map()
     private didDownloadFilenames = new vscode.EventEmitter<string>()
-    private readonly cache = new Map<string, Blob>()
 
     // ======================
     // FileSystemProvider API
     // ======================
     private didChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>() // Never used.
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.didChangeFile.event
-    public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-        const blob = await this.fetchBlob(this.sourcegraphUri(uri))
+    public async stat(vscodeUri: vscode.Uri): Promise<vscode.FileStat> {
+        const uri = this.sourcegraphUri(vscodeUri)
+        const files = await this.downloadedFiles(uri)
+        const isFile = uri.path && files.includes(uri.path)
+        const type = isFile ? vscode.FileType.File : vscode.FileType.Directory
+        const now = Date.now()
         return {
-            mtime: blob.time,
-            ctime: blob.time,
-            size: blob.byteSize,
-            type: blob.type,
+            // It seems to be OK to return hardcoded values for the timestamps
+            // and the byte size.  If it turns out the byte size needs to be
+            // correct for some reason, then we can use
+            // `this.fetchBlob(uri).byteSize` to get the value for files.
+            mtime: now,
+            ctime: now,
+            size: 1337,
+            type,
         }
     }
 
     public async readFile(vscodeUri: vscode.Uri): Promise<Uint8Array> {
         const uri = this.sourcegraphUri(vscodeUri)
-        return (await this.fetchBlob(uri)).content
+        const blob = await this.fetchBlob(uri)
+        return blob.content
     }
 
     public async readDirectory(vscodeUri: vscode.Uri): Promise<[string, vscode.FileType][]> {
@@ -60,13 +68,10 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
             return []
         }
         const tree = await this.getFileTree(uri)
-        if (!tree) {
-            return []
-        }
         const children = tree.directChildren(uri.path || '')
         return children.map(childUri => {
             const child = SourcegraphUri.parse(childUri)
-            const type = child.isDirectory ? vscode.FileType.Directory : vscode.FileType.File
+            const type = child.isDirectory() ? vscode.FileType.Directory : vscode.FileType.File
             return [child.basename(), type]
         })
     }
@@ -113,7 +118,7 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
                     fileNames,
                 })
             } catch {
-                log.appendLine(`ERROR: failed to download repo files ${repositoryUri}`)
+                log.error(`failed to download files for repository '${repositoryUri}'`)
             }
         }
         return promises
@@ -148,12 +153,12 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         const token = emptyCancelationToken()
         const defaultBranch = (await this.repositoryMetadata(repositoryName, token))?.defaultBranch
         if (!defaultBranch) {
-            const message = `ERROR defaultBranch no repository '${repositoryName}'`
-            log.appendLine(message)
+            const message = `repository '${repositoryName}' has no default branch`
+            log.error(message)
             throw new Error(message)
         }
         const uri = SourcegraphUri.fromParts(endpointHostnameSetting(), repositoryName, { revision: defaultBranch })
-        const files = await this.downloadFiles(uri, defaultBranch)
+        const files = await this.downloadFiles(uri)
         const readmes = files.filter(name => name.match(/readme/i))
         const candidates = readmes.length > 0 ? readmes : files
         let readme: string | undefined
@@ -176,21 +181,18 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
     }
 
     public async fetchBlob(uri: SourcegraphUri): Promise<Blob> {
-        const result = this.cache.get(uri.uri)
-        if (result) {
-            return result
-        }
         await this.repositoryMetadata(uri.repositoryName)
         const token = emptyCancelationToken()
-        const revision = uri.revision || (await this.repositoryMetadata(uri.repositoryName, token))?.defaultBranch
-        if (!revision) {
-            throw new Error(`no uri.revision from uri ${uri.uri}`)
+        if (!uri.revision) {
+            const error = `missing revision for URI '${uri.uri}'`
+            log.error(error)
+            throw new Error(error)
         }
         const path = uri.path || ''
         const content = await contents(
             {
                 repository: uri.repositoryName,
-                revision,
+                revision: uri.revision,
                 path,
             },
             token
@@ -200,7 +202,7 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
             const toCacheResult: Blob = {
                 uri: uri.uri,
                 repositoryName: uri.repositoryName,
-                revision,
+                revision: uri.revision,
                 content: content.content,
                 isBinaryFile: content.isBinary,
                 byteSize: content.byteSize,
@@ -208,10 +210,9 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
                 time: new Date().getMilliseconds(),
                 type: vscode.FileType.File,
             }
-            this.cache.set(uri.uri, toCacheResult)
 
             // Start downloading the repository files in the background.
-            this.downloadFiles(uri, revision).then(
+            this.downloadFiles(uri).then(
                 () => {},
                 () => {}
             )
@@ -235,12 +236,19 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         return metadata
     }
 
-    public downloadFiles(uri: SourcegraphUri, revision: string): Promise<string[]> {
+    public async downloadedFiles(uri: SourcegraphUri): Promise<string[]> {
+        return this.fileNamesByRepository.get(uri.repositoryUri()) || []
+    }
+
+    public downloadFiles(uri: SourcegraphUri): Promise<string[]> {
         const key = uri.repositoryUri()
         const fileNamesByRepository = this.fileNamesByRepository
         let downloadingFiles = this.fileNamesByRepository.get(key)
         if (!downloadingFiles) {
-            downloadingFiles = filesQuery({ repository: uri.repositoryName, revision }, emptyCancelationToken())
+            downloadingFiles = filesQuery(
+                { repository: uri.repositoryName, revision: uri.revision },
+                emptyCancelationToken()
+            )
             downloadingFiles.then(
                 () => this.didDownloadFilenames.fire(key),
                 () => fileNamesByRepository.delete(key)
@@ -254,22 +262,8 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         return SourcegraphUri.parse(uri.toString(true))
     }
 
-    public async getFileTree(uri: SourcegraphUri): Promise<FileTree | undefined> {
-        if (!uri.revision) {
-            uri = uri.withRevision(this.metadata.get(uri.repositoryName)?.defaultBranch)
-        }
-        const key = uri.repositoryUri()
-        const downloading = this.fileNamesByRepository.get(key)
-        if (!downloading) {
-            const keys = JSON.stringify([...this.fileNamesByRepository.keys()])
-            log.error(`getFileTree(${uri.uri}) - empty downloading key=${key} keys=${keys}`)
-            return Promise.resolve(undefined)
-        }
-        const files = await downloading
-        if (!files) {
-            log.error('getFileTree - empty files')
-            return Promise.resolve(undefined)
-        }
+    public async getFileTree(uri: SourcegraphUri): Promise<FileTree> {
+        const files = await this.downloadedFiles(uri)
         return new FileTree(uri, files)
     }
 }

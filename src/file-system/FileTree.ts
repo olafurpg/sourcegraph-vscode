@@ -28,13 +28,15 @@ export class FileTree {
                 continue
             }
             if (file.startsWith(directory)) {
-                const revision = this.uri.revision ? `@${this.uri.revision}` : ''
                 const fileDepth = this.depth(file)
-                const isDirect = isRoot ? fileDepth === 0 : fileDepth === depth + 1
-                const path = isDirect ? file : file.slice(0, file.indexOf('/', directory.length))
-                const kind = isDirect ? 'blob' : 'tree'
-                const uri = `sourcegraph://${this.uri.host}/${this.uri.repositoryName}${revision}/-/${kind}/${path}`
-                if (isDirect) {
+                const isFile = isRoot ? fileDepth === 0 : fileDepth === depth + 1
+                const path = isFile ? file : file.slice(0, file.indexOf('/', directory.length))
+                const uri = SourcegraphUri.fromParts(this.uri.host, this.uri.repositoryName, {
+                    revision: this.uri.revision,
+                    path,
+                    isDirectory: !isFile,
+                }).uri
+                if (isFile) {
                     directFiles.add(uri)
                 } else {
                     directDirectories.add(uri)

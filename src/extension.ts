@@ -107,7 +107,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.openFile', async uri => {
             if (typeof uri === 'string') {
-                await openSourcegraphUriCommand(SourcegraphUri.parse(uri))
+                await openSourcegraphUriCommand(fs, SourcegraphUri.parse(uri))
             } else {
                 // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
                 log.error(`extension.openFile(${uri}) argument is not a string`)

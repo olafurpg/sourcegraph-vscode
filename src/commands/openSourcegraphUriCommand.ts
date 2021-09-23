@@ -1,7 +1,12 @@
 import * as vscode from 'vscode'
+import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
 import { SourcegraphUri } from '../file-system/SourcegraphUri'
 
-export async function openSourcegraphUriCommand(uri: SourcegraphUri): Promise<void> {
+export async function openSourcegraphUriCommand(fs: SourcegraphFileSystemProvider, uri: SourcegraphUri): Promise<void> {
+    if (!uri.revision) {
+        const metadata = await fs.repositoryMetadata(uri.repositoryName)
+        uri = uri.withRevision(metadata?.defaultBranch || 'HEAD')
+    }
     const textDocument = await vscode.workspace.openTextDocument(vscode.Uri.parse(uri.uri))
     const selection = getSelection(uri, textDocument)
     await vscode.window.showTextDocument(textDocument, {

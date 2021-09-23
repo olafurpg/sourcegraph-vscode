@@ -15,7 +15,6 @@ export function graphqlQueryWithAccessToken<A, B>(
     token: CancellationToken,
     accessToken: string
 ): Promise<B | undefined> {
-    log.appendLine(`accessToken ${accessToken}`)
     return new Promise<B | undefined>((resolve, reject) => {
         const data = JSON.stringify({
             query,

@@ -52,8 +52,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
             }
             const uri = SourcegraphUri.parse(uriString)
             const tree = await this.fs.getFileTree(uri)
-            const result = tree?.directChildren(uri.path || '')
-            return result
+            return tree.directChildren(uri.path || '')
         } catch (error) {
             log.error(`getChildren(${uriString || ''})`, error)
             return Promise.resolve(undefined)
@@ -71,19 +70,17 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         this.activeUri = vscodeUri
         if (vscodeUri && vscodeUri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
             const uri = this.fs.sourcegraphUri(vscodeUri)
-            await this.fs.downloadFiles(uri, uri.revision || '')
+            await this.fs.downloadFiles(uri)
             await this.didFocusString(uri, true, this.didFocusToken.token)
         }
     }
 
     public async getTreeItem(uriString: string): Promise<vscode.TreeItem> {
-        const uri = SourcegraphUri.parse(uriString)
         try {
+            const uri = SourcegraphUri.parse(uriString)
             const label = await this.treeItemLabel(uri)
-            const isFile = uri.uri.includes('/-/blob/')
-            const isDirectory = !isFile
-            const collapsibleState = await this.getCollapsibleState(uri, isDirectory)
-            const command = isFile
+            const collapsibleState = await this.getCollapsibleState(uri)
+            const command = uri.isFile()
                 ? {
                       command: 'extension.openFile',
                       title: 'Open file',
@@ -99,7 +96,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
                 resourceUri: vscode.Uri.parse(uri.uri),
             }
         } catch (error) {
-            log.error(`getTreeItem(${uri.uri})`, error)
+            log.error(`getTreeItem(${uriString})`, error)
             return Promise.resolve({})
         }
     }
@@ -141,21 +138,21 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         return `${uri.repositoryName}@${revision || ''}`
     }
 
-    private async getCollapsibleState(
-        uri: SourcegraphUri,
-        isDirectory: boolean
-    ): Promise<vscode.TreeItemCollapsibleState> {
-        const parent = uri.parentUri()
-        if (isDirectory && parent) {
-            const parentUri = SourcegraphUri.parse(parent)
-            if (parentUri.path) {
-                const tree = await this.fs.getFileTree(parentUri)
-                const directChildren = tree?.directChildren(parentUri.path)
+    private async getCollapsibleState(uri: SourcegraphUri): Promise<vscode.TreeItemCollapsibleState> {
+        if (uri.isFile()) {
+            return vscode.TreeItemCollapsibleState.None
+        }
+        const parentUri = uri.parentUri()
+        if (parentUri) {
+            const parent = SourcegraphUri.parse(parentUri)
+            if (parent.path) {
+                const tree = await this.fs.getFileTree(parent)
+                const directChildren = tree.directChildren(parent.path)
                 if (directChildren && directChildren.length === 1) {
                     return vscode.TreeItemCollapsibleState.Expanded
                 }
             }
         }
-        return isDirectory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
+        return vscode.TreeItemCollapsibleState.Collapsed
     }
 }

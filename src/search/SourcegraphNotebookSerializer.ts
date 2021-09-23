@@ -31,7 +31,7 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
                 if (!uri.revision) {
                     uri = uri.withRevision((await fs.repositoryMetadata(uri.repositoryName))?.defaultBranch)
                 }
-                await openSourcegraphUriCommand(uri)
+                await openSourcegraphUriCommand(fs, uri)
             } else if (event.message?.request === 'logMessage' && typeof event.message?.message === 'string') {
                 log.appendLine(event.message.message)
             }

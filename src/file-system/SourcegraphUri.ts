@@ -9,10 +9,9 @@ export class SourcegraphUri {
         public readonly uri: string,
         public readonly host: string,
         public readonly repositoryName: string,
-        public readonly revision: string | undefined,
+        public readonly revision: string,
         public readonly path: string | undefined,
-        public readonly position: Position | undefined,
-        public readonly isDirectory: boolean
+        public readonly position: Position | undefined
     ) {}
 
     public withRevision(newRevision: string | undefined): SourcegraphUri {
@@ -50,8 +49,21 @@ export class SourcegraphUri {
         return undefined
     }
 
+    public withIsDirectory(isDirectory: boolean): SourcegraphUri {
+        return SourcegraphUri.fromParts(this.host, this.repositoryName, {
+            isDirectory,
+            path: this.path,
+            revision: this.revision,
+            position: this.position,
+        })
+    }
+
+    public isDirectory(): boolean {
+        return !this.isFile()
+    }
+
     public isFile(): boolean {
-        return typeof this.path === 'string' && this.uri.includes('/-/blob/')
+        return this.uri.includes('/-/blob/')
     }
 
     public static fromParts(
@@ -65,15 +77,15 @@ export class SourcegraphUri {
         }
     ): SourcegraphUri {
         const revisionPart = optional?.revision ? `@${optional.revision}` : ''
-        const pathPart = optional?.path ? `/-/blob/${optional?.path}` : ''
+        const directoryPart = optional?.isDirectory ? 'tree' : 'blob'
+        const pathPart = optional?.path ? `/-/${directoryPart}/${optional?.path}` : ''
         return new SourcegraphUri(
             `sourcegraph://${host}/${repositoryName}${revisionPart}${pathPart}`,
             host,
             repositoryName,
-            optional?.revision,
+            optional?.revision || '',
             optional?.path,
-            optional?.position,
-            optional?.isDirectory || false
+            optional?.position
         )
     }
     public repositoryUri(): string {
