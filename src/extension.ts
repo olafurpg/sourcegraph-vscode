@@ -17,6 +17,7 @@ import { SourcegraphDefinitionProvider } from './code-intel/SourcegraphDefinitio
 import { SourcegraphReferenceProvider } from './code-intel/SourcegraphReferenceProvider'
 import { SourcegraphTreeDataProvider } from './file-system/SourcegraphTreeDataProvider'
 import { switchGitRevisionCommand } from './commands/switchGitRevisionCommand'
+import { openFileInBrowserCommand } from './commands/openFileInBrowserCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const { version } = require('../package.json')
@@ -105,7 +106,17 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.switchGitRevision',
-            handleCommandErrors('extension.switchGitRevision', () => switchGitRevisionCommand(treeDataProvider))
+            handleCommandErrors('extension.switchGitRevision', (uri: string | undefined) =>
+                switchGitRevisionCommand(treeDataProvider, uri)
+            )
+        )
+    )
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'extension.openFileInBrowser',
+            handleCommandErrors('extension.openFileInBrowser', (uri: string | undefined) =>
+                openFileInBrowserCommand(treeDataProvider, uri)
+            )
         )
     )
     context.subscriptions.push(

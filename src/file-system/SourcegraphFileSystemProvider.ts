@@ -255,8 +255,8 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
             vscode.window
                 .withProgress(
                     {
-                        location: vscode.ProgressLocation.SourceControl,
-                        title: `Downloading files for the repository ${uri.repositoryName}`,
+                        location: vscode.ProgressLocation.Window,
+                        title: `Loading ${uri.repositoryName}`,
                     },
                     async progress => {
                         try {

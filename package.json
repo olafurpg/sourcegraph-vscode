@@ -97,7 +97,14 @@
       {
         "command": "extension.switchGitRevision",
         "category": "Sourcegraph",
-        "title": "Switch git revision"
+        "title": "View File at Git Revision",
+        "enablement": "resourceScheme == sourcegraph || focusedView == 'sourcegraph.files'"
+      },
+      {
+        "command": "extension.openFileInBrowser",
+        "category": "Sourcegraph",
+        "title": "Open File in Web Browser",
+        "enablement": "resourceScheme == sourcegraph || focusedView == 'sourcegraph.files'"
       },
       {
         "command": "extension.newNotebook",
@@ -163,7 +170,9 @@
         }
       ],
       "view/item/context": [
-        {"command": "extension.goToFileInFolder", "when": "view == sourcegraph.files && viewItem == directory"}
+        {"command": "extension.goToFileInFolder", "when": "view == sourcegraph.files && viewItem == directory"},
+        {"command": "extension.switchGitRevision", "when": "view == sourcegraph.files && viewItem == file"},
+        {"command": "extension.openFileInBrowser", "when": "view == sourcegraph.files && viewItem == file"}
       ]
     },
     "keybindings": [

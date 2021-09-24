@@ -1,13 +1,17 @@
 import { SourcegraphTreeDataProvider } from '../file-system/SourcegraphTreeDataProvider'
+import { SourcegraphUri } from '../file-system/SourcegraphUri'
 import { log } from '../log'
 import { GitReference, gitReferencesQuery } from '../queries/gitReferencesQuery'
 import { openSourcegraphUriCommand } from './openSourcegraphUriCommand'
 import { SourcegraphQuickPick } from './SourcegraphQuickPick'
 
-export async function switchGitRevisionCommand(tree: SourcegraphTreeDataProvider): Promise<void> {
+export async function switchGitRevisionCommand(
+    tree: SourcegraphTreeDataProvider,
+    uriString: string | undefined
+): Promise<void> {
     const quick = new SourcegraphQuickPick(tree.fs)
     quick.pick.title = 'Search for a git branch, git tag or a git commit'
-    const activeTextDocument = tree.activeTextDocument()
+    const activeTextDocument = uriString ? SourcegraphUri.parse(uriString) : tree.activeTextDocument()
     if (!activeTextDocument || !activeTextDocument.path) {
         return
     }

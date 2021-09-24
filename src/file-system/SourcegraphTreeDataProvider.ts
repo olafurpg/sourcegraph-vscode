@@ -42,11 +42,41 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         })
     }
 
-    public getParent(uriString?: string): string | undefined {
+    public async getParent(uriString?: string): Promise<string | undefined> {
         if (!uriString) {
             return undefined
         }
-        return SourcegraphUri.parse(uriString).parentUri()
+        const uri = SourcegraphUri.parse(uriString)
+        if (!uri.path) {
+            return undefined
+        }
+        let ancestor: string | undefined = uri.repositoryUri()
+        let children = await this.getChildren(ancestor)
+        while (ancestor) {
+            for (const childName of children || []) {
+                log.appendLine(`child=${childName}`)
+            }
+            const isParent = children?.includes(uriString)
+            if (isParent) {
+                break
+            }
+            ancestor = children?.find(childUri => {
+                const child = SourcegraphUri.parse(childUri)
+                return child.path && uri.path?.startsWith(child.path + '/')
+            })
+            if (!ancestor) {
+                log.error(`getParent(${uriString || 'undefined'}) nothing startsWith`)
+                throw new Error('BOOM')
+            }
+            children = await this.getChildren(ancestor)
+        }
+        log.appendLine(`getParent(${uriString || 'undefined'}) ancestor=${ancestor || 'undefined'}`)
+        return ancestor
+        // let parentUri = SourcegraphUri.parse(uriString).parentUri()
+        // while (parentUri && !this.treeItemCache.has(parentUri)) {
+        //     parentUri = SourcegraphUri.parse(parentUri).parentUri()
+        // }
+        // return parentUri
     }
 
     public async getChildren(uriString?: string): Promise<string[] | undefined> {
@@ -84,14 +114,14 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         }
     }
 
-    public getTreeItem(uriString: string): vscode.TreeItem {
+    public async getTreeItem(uriString: string): Promise<vscode.TreeItem> {
         try {
             const fromCache = this.treeItemCache.get(uriString)
             if (fromCache) {
                 return fromCache
             }
             const uri = SourcegraphUri.parse(uriString)
-            const parentUri = uri.parentUri()
+            const parentUri = await this.getParent(uri.uri)
             return this.newTreeItem(uri, parentUri ? SourcegraphUri.parse(parentUri) : undefined, 0)
         } catch (error) {
             log.error(`getTreeItem(${uriString})`, error)
@@ -106,7 +136,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     ): Promise<void> {
         try {
             if (this.treeView) {
-                const parent = uri.parentUri()
+                const parent = await this.getParent(uri.uri)
                 if (parent && !this.isExpandedNode.has(parent)) {
                     await this.didFocusString(SourcegraphUri.parse(parent), false, token)
                 }
