@@ -16,6 +16,7 @@ import { SourcegraphHoverProvider } from './code-intel/SourcegraphHoverProvider'
 import { SourcegraphDefinitionProvider } from './code-intel/SourcegraphDefinitionProvider'
 import { SourcegraphReferenceProvider } from './code-intel/SourcegraphReferenceProvider'
 import { SourcegraphTreeDataProvider } from './file-system/SourcegraphTreeDataProvider'
+import { switchGitRevisionCommand } from './commands/switchGitRevisionCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const { version } = require('../package.json')
@@ -99,6 +100,12 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand(
             'extension.goToRepository',
             handleCommandErrors('extension.goToRepository', () => goToRepositoryCommand(fs))
+        )
+    )
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'extension.switchGitRevision',
+            handleCommandErrors('extension.switchGitRevision', () => switchGitRevisionCommand(treeDataProvider))
         )
     )
     context.subscriptions.push(

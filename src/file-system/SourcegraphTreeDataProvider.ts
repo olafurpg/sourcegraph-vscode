@@ -4,7 +4,7 @@ import { SourcegraphFileSystemProvider } from './SourcegraphFileSystemProvider'
 import { SourcegraphUri } from './SourcegraphUri'
 
 export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<string> {
-    constructor(private readonly fs: SourcegraphFileSystemProvider) {
+    constructor(public readonly fs: SourcegraphFileSystemProvider) {
         fs.onDidDownloadRepositoryFilenames(() => this.didChangeTreeData.fire(undefined))
     }
 
@@ -17,6 +17,11 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     private readonly didChangeTreeData = new vscode.EventEmitter<string | undefined>()
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.didChangeTreeData.event
 
+    public activeTextDocument(): SourcegraphUri | undefined {
+        return this.activeUri && this.activeUri.scheme === 'sourcegraph'
+            ? this.fs.sourcegraphUri(this.activeUri)
+            : undefined
+    }
     public setTreeView(treeView: vscode.TreeView<string>): void {
         this.treeView = treeView
         treeView.onDidChangeVisibility(event => {

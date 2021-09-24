@@ -95,6 +95,11 @@
         "title": "Go to Repository"
       },
       {
+        "command": "extension.switchGitRevision",
+        "category": "Sourcegraph",
+        "title": "Switch git revision"
+      },
+      {
         "command": "extension.newNotebook",
         "category": "Sourcegraph",
         "title": "New Search Notebook"
