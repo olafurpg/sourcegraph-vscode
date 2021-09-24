@@ -53,9 +53,6 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         let ancestor: string | undefined = uri.repositoryUri()
         let children = await this.getChildren(ancestor)
         while (ancestor) {
-            for (const childName of children || []) {
-                log.appendLine(`child=${childName}`)
-            }
             const isParent = children?.includes(uriString)
             if (isParent) {
                 break
@@ -70,13 +67,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
             }
             children = await this.getChildren(ancestor)
         }
-        log.appendLine(`getParent(${uriString || 'undefined'}) ancestor=${ancestor || 'undefined'}`)
         return ancestor
-        // let parentUri = SourcegraphUri.parse(uriString).parentUri()
-        // while (parentUri && !this.treeItemCache.has(parentUri)) {
-        //     parentUri = SourcegraphUri.parse(parentUri).parentUri()
-        // }
-        // return parentUri
     }
 
     public async getChildren(uriString?: string): Promise<string[] | undefined> {
@@ -164,38 +155,6 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         return `${uri.repositoryName}${uri.revisionPart()}`
     }
 
-    // private collapsibleState(uri: SourcegraphUri): vscode.TreeItemCollapsibleState {
-    //     if (uri.isFile()) {
-    //         return vscode.TreeItemCollapsibleState.None
-    //     }
-    //     const parentUri = uri.parentUri()
-    //     if (parentUri && this.treeItemCache.get(parentUri) === 1) {
-    //         return vscode.TreeItemCollapsibleState.Expanded
-    //     }
-    //     return vscode.TreeItemCollapsibleState.Collapsed
-    // }
-    //     if (uri.isFile()) {
-    //         return vscode.TreeItemCollapsibleState.None
-    //     }
-    //     const parentUri = uri.parentUri()
-    //     let result = vscode.TreeItemCollapsibleState.Collapsed
-    //     if (parentUri) {
-    //         const parent = SourcegraphUri.parse(parentUri)
-    //         const tree = await this.fs.getFileTree(parent)
-    //         const fromCache = this.directChildrenCount.get(parentUri)
-    //         if (fromCache) {
-    //             return fromCache
-    //         }
-    //         if (parent.path) {
-    //             const directChildren = tree.directChildren(parent.path)
-    //             if (directChildren && directChildren.length === 1) {
-    //                 result = vscode.TreeItemCollapsibleState.Expanded
-    //             }
-    //         }
-    //         this.directChildrenCount.set(parentUri, result)
-    //     }
-    //     return result
-    // }
     private newTreeItem(
         uri: SourcegraphUri,
         parent: SourcegraphUri | undefined,
