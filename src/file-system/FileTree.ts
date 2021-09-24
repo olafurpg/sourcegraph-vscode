@@ -16,6 +16,10 @@ export class FileTree {
     // usable in its current state but could be much faster if we use binary
     // search to skip unrelated paths.
     public directChildren(directory: string): string[] {
+        return this.directChildrenInternal(directory, true)
+    }
+
+    private directChildrenInternal(directory: string, allowRecursion: boolean): string[] {
         const depth = this.depth(directory)
         const directFiles = new Set<string>()
         const directDirectories = new Set<string>()
@@ -23,14 +27,28 @@ export class FileTree {
         if (!isRoot && !directory.endsWith('/')) {
             directory = directory + '/'
         }
-        for (const file of this.files) {
+        let index = this.binarySearchDirectoryStart(directory)
+        while (index < this.files.length) {
+            const startIndex = index
+            const file = this.files[index]
             if (file === '') {
+                index++
                 continue
             }
             if (file.startsWith(directory)) {
                 const fileDepth = this.depth(file)
                 const isFile = isRoot ? fileDepth === 0 : fileDepth === depth + 1
-                const path = isFile ? file : file.slice(0, file.indexOf('/', directory.length))
+                let path = isFile ? file : file.slice(0, file.indexOf('/', directory.length))
+                let nestedChildren = allowRecursion && !isFile ? this.directChildrenInternal(path, false) : []
+                while (allowRecursion && nestedChildren.length === 1) {
+                    const child = SourcegraphUri.parse(nestedChildren[0])
+                    if (child.isDirectory()) {
+                        path = child.path || ''
+                        nestedChildren = this.directChildrenInternal(path, false)
+                    } else {
+                        break
+                    }
+                }
                 const uri = SourcegraphUri.fromParts(this.uri.host, this.uri.repositoryName, {
                     revision: this.uri.revision,
                     path,
@@ -39,11 +57,48 @@ export class FileTree {
                 if (isFile) {
                     directFiles.add(uri)
                 } else {
+                    index = this.binarySearchDirectoryEnd(path + '/', index + 1)
                     directDirectories.add(uri)
+                    // log.appendLine(`directory=${path} end=${this.files[index]}`)
                 }
+            }
+            if (index === startIndex) {
+                index++
             }
         }
         return [...directDirectories, ...directFiles]
+    }
+
+    public binarySearchDirectoryStart(directory: string): number {
+        if (directory === '') {
+            return 0
+        }
+        return this.binarySearch(
+            { low: 0, high: this.files.length },
+            midpoint => this.files[midpoint].localeCompare(directory) > 0
+        )
+    }
+
+    public binarySearchDirectoryEnd(directory: string, low: number): number {
+        while (low < this.files.length && this.files[low].localeCompare(directory) <= 0) {
+            low++
+        }
+        return this.binarySearch(
+            { low, high: this.files.length },
+            midpoint => !this.files[midpoint].startsWith(directory)
+        )
+    }
+
+    public binarySearch({ low, high }: SearchRange, isGreater: (midpoint: number) => boolean): number {
+        while (low < high) {
+            const midpoint = Math.floor(low + (high - low) / 2)
+            if (isGreater(midpoint)) {
+                high = midpoint
+            } else {
+                low = midpoint + 1
+            }
+        }
+        return high
     }
 
     private depth(path: string): number {
@@ -55,4 +110,9 @@ export class FileTree {
         }
         return result
     }
+}
+
+interface SearchRange {
+    low: number
+    high: number
 }

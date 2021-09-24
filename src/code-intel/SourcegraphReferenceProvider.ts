@@ -40,7 +40,7 @@ export class SourcegraphReferenceProvider implements vscode.ReferenceProvider {
         const repos = [...this.fs.allRepositoryUris()]
             .map(repo => {
                 const uri = SourcegraphUri.parse(repo)
-                return `repo:^${uri.repositoryName}$${uri.revisionSuffix()}`
+                return `repo:^${uri.repositoryName}$${uri.revisionPart()}`
             })
             .join(' OR ')
         const query = `(${repos}) AND ${document.getText()}`

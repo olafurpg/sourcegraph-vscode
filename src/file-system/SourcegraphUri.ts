@@ -41,7 +41,7 @@ export class SourcegraphUri {
         if (typeof this.path === 'string') {
             const slash = this.uri.lastIndexOf('/')
             if (slash < 0 || !this.path.includes('/')) {
-                return `sourcegraph://${this.host}/${this.repositoryName}${this.revisionSuffix()}`
+                return `sourcegraph://${this.host}/${this.repositoryName}${this.revisionPart()}`
             }
             const parent = this.uri.slice(0, slash).replace('/-/blob/', '/-/tree/')
             return parent
@@ -59,7 +59,7 @@ export class SourcegraphUri {
     }
 
     public isDirectory(): boolean {
-        return !this.isFile()
+        return this.uri.includes('/-/tree/')
     }
 
     public isFile(): boolean {
@@ -89,9 +89,9 @@ export class SourcegraphUri {
         )
     }
     public repositoryUri(): string {
-        return `sourcegraph://${this.host}/${this.repositoryName}${this.revisionSuffix()}`
+        return `sourcegraph://${this.host}/${this.repositoryName}${this.revisionPart()}`
     }
-    public revisionSuffix(): string {
+    public revisionPart(): string {
         return this.revision ? `@${this.revision}` : ''
     }
     public positionSuffix(): string {

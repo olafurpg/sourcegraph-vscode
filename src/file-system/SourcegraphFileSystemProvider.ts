@@ -40,9 +40,12 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.didChangeFile.event
     public async stat(vscodeUri: vscode.Uri): Promise<vscode.FileStat> {
         const uri = this.sourcegraphUri(vscodeUri)
-        const files = await this.downloadedFiles(uri)
+        const files = await this.downloadFiles(uri)
         const isFile = uri.path && files.includes(uri.path)
         const type = isFile ? vscode.FileType.File : vscode.FileType.Directory
+        // log.appendLine(
+        //     `stat(${uri.uri}) path=${uri.path || '""'} files.length=${files.length} type=${vscode.FileType[type]}`
+        // )
         const now = Date.now()
         return {
             // It seems to be OK to return hardcoded values for the timestamps
@@ -114,7 +117,7 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
                 const uri = SourcegraphUri.parse(repositoryUri)
                 promises.push({
                     repositoryUri: uri.repositoryUri(),
-                    repositoryName: `${uri.repositoryName}${uri.revisionSuffix()}`,
+                    repositoryName: `${uri.repositoryName}${uri.revisionPart()}`,
                     fileNames,
                 })
             } catch {
@@ -236,10 +239,6 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         return metadata
     }
 
-    public async downloadedFiles(uri: SourcegraphUri): Promise<string[]> {
-        return this.fileNamesByRepository.get(uri.repositoryUri()) || []
-    }
-
     public downloadFiles(uri: SourcegraphUri): Promise<string[]> {
         const key = uri.repositoryUri()
         const fileNamesByRepository = this.fileNamesByRepository
@@ -249,10 +248,28 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
                 { repository: uri.repositoryName, revision: uri.revision },
                 emptyCancelationToken()
             )
-            downloadingFiles.then(
-                () => this.didDownloadFilenames.fire(key),
-                () => fileNamesByRepository.delete(key)
-            )
+            vscode.window
+                .withProgress(
+                    {
+                        location: vscode.ProgressLocation.SourceControl,
+                        title: `Downloading files for the repository ${uri.repositoryName}`,
+                    },
+                    async progress => {
+                        try {
+                            await downloadingFiles
+                            this.didDownloadFilenames.fire(key)
+                        } catch (error) {
+                            log.error(`downloadFiles(${key})`, error)
+                            fileNamesByRepository.delete(key)
+                        }
+                        progress.report({ increment: 100 })
+                    }
+                )
+                .then(
+                    () => {},
+                    () => {}
+                )
+
             this.fileNamesByRepository.set(key, downloadingFiles)
         }
         return downloadingFiles
@@ -263,7 +280,7 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
     }
 
     public async getFileTree(uri: SourcegraphUri): Promise<FileTree> {
-        const files = await this.downloadedFiles(uri)
+        const files = await this.downloadFiles(uri)
         return new FileTree(uri, files)
     }
 }

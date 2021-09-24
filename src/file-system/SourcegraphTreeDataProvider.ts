@@ -1,7 +1,6 @@
 import * as vscode from 'vscode'
 import { log } from '../log'
 import { SourcegraphFileSystemProvider } from './SourcegraphFileSystemProvider'
-import { emptyCancelationToken } from './emptyCancelationToken'
 import { SourcegraphUri } from './SourcegraphUri'
 
 export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<string> {
@@ -14,6 +13,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     private treeView: vscode.TreeView<string> | undefined
     private activeUri: vscode.Uri | undefined
     private didFocusToken = new vscode.CancellationTokenSource()
+    private treeItemCache = new Map<string, vscode.TreeItem>()
     private readonly didChangeTreeData = new vscode.EventEmitter<string | undefined>()
     public readonly onDidChangeTreeData: vscode.Event<string | undefined> = this.didChangeTreeData.event
 
@@ -52,7 +52,11 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
             }
             const uri = SourcegraphUri.parse(uriString)
             const tree = await this.fs.getFileTree(uri)
-            return tree.directChildren(uri.path || '')
+            const directChildren = tree.directChildren(uri.path || '')
+            for (const child of directChildren) {
+                this.treeItemCache.set(child, this.newTreeItem(SourcegraphUri.parse(child), uri, directChildren.length))
+            }
+            return directChildren
         } catch (error) {
             log.error(`getChildren(${uriString || ''})`, error)
             return Promise.resolve(undefined)
@@ -75,29 +79,18 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         }
     }
 
-    public async getTreeItem(uriString: string): Promise<vscode.TreeItem> {
+    public getTreeItem(uriString: string): vscode.TreeItem {
         try {
-            const uri = SourcegraphUri.parse(uriString)
-            const label = await this.treeItemLabel(uri)
-            const collapsibleState = await this.getCollapsibleState(uri)
-            const command = uri.isFile()
-                ? {
-                      command: 'extension.openFile',
-                      title: 'Open file',
-                      arguments: [uri.uri],
-                  }
-                : undefined
-            return {
-                id: uri.uri,
-                label,
-                tooltip: uri.uri.replace('sourcegraph://', 'https://'),
-                collapsibleState,
-                command,
-                resourceUri: vscode.Uri.parse(uri.uri),
+            const fromCache = this.treeItemCache.get(uriString)
+            if (fromCache) {
+                return fromCache
             }
+            const uri = SourcegraphUri.parse(uriString)
+            const parentUri = uri.parentUri()
+            return this.newTreeItem(uri, parentUri ? SourcegraphUri.parse(parentUri) : undefined, 0)
         } catch (error) {
             log.error(`getTreeItem(${uriString})`, error)
-            return Promise.resolve({})
+            return {}
         }
     }
 
@@ -126,33 +119,73 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         }
     }
 
-    private async treeItemLabel(uri: SourcegraphUri): Promise<string> {
+    private treeItemLabel(uri: SourcegraphUri, parent?: SourcegraphUri): string {
         if (uri.path) {
-            return uri.basename()
+            if (parent?.path) {
+                return uri.path.slice(parent.path.length + 1)
+            }
+            return uri.path
         }
-        const metadata = await this.fs.repositoryMetadata(uri.repositoryName, emptyCancelationToken())
-        let revision = uri.revision
-        if (metadata?.defaultBranch && (!revision || revision === metadata?.defaultOid)) {
-            revision = metadata.defaultBranch
-        }
-        return `${uri.repositoryName}@${revision || ''}`
+        return `${uri.repositoryName}${uri.revisionPart()}`
     }
 
-    private async getCollapsibleState(uri: SourcegraphUri): Promise<vscode.TreeItemCollapsibleState> {
-        if (uri.isFile()) {
-            return vscode.TreeItemCollapsibleState.None
+    // private collapsibleState(uri: SourcegraphUri): vscode.TreeItemCollapsibleState {
+    //     if (uri.isFile()) {
+    //         return vscode.TreeItemCollapsibleState.None
+    //     }
+    //     const parentUri = uri.parentUri()
+    //     if (parentUri && this.treeItemCache.get(parentUri) === 1) {
+    //         return vscode.TreeItemCollapsibleState.Expanded
+    //     }
+    //     return vscode.TreeItemCollapsibleState.Collapsed
+    // }
+    //     if (uri.isFile()) {
+    //         return vscode.TreeItemCollapsibleState.None
+    //     }
+    //     const parentUri = uri.parentUri()
+    //     let result = vscode.TreeItemCollapsibleState.Collapsed
+    //     if (parentUri) {
+    //         const parent = SourcegraphUri.parse(parentUri)
+    //         const tree = await this.fs.getFileTree(parent)
+    //         const fromCache = this.directChildrenCount.get(parentUri)
+    //         if (fromCache) {
+    //             return fromCache
+    //         }
+    //         if (parent.path) {
+    //             const directChildren = tree.directChildren(parent.path)
+    //             if (directChildren && directChildren.length === 1) {
+    //                 result = vscode.TreeItemCollapsibleState.Expanded
+    //             }
+    //         }
+    //         this.directChildrenCount.set(parentUri, result)
+    //     }
+    //     return result
+    // }
+    private newTreeItem(
+        uri: SourcegraphUri,
+        parent: SourcegraphUri | undefined,
+        parentChildrenCount: number
+    ): vscode.TreeItem {
+        const command = uri.isFile()
+            ? {
+                  command: 'extension.openFile',
+                  title: 'Open file',
+                  arguments: [uri.uri],
+              }
+            : undefined
+        const label = this.treeItemLabel(uri, parent)
+
+        return {
+            id: uri.uri,
+            label,
+            tooltip: uri.uri.replace('sourcegraph://', 'https://'),
+            collapsibleState: uri.isFile()
+                ? vscode.TreeItemCollapsibleState.None
+                : parentChildrenCount === 1
+                ? vscode.TreeItemCollapsibleState.Expanded
+                : vscode.TreeItemCollapsibleState.Collapsed,
+            command,
+            resourceUri: vscode.Uri.parse(uri.uri),
         }
-        const parentUri = uri.parentUri()
-        if (parentUri) {
-            const parent = SourcegraphUri.parse(parentUri)
-            if (parent.path) {
-                const tree = await this.fs.getFileTree(parent)
-                const directChildren = tree.directChildren(parent.path)
-                if (directChildren && directChildren.length === 1) {
-                    return vscode.TreeItemCollapsibleState.Expanded
-                }
-            }
-        }
-        return vscode.TreeItemCollapsibleState.Collapsed
     }
 }
