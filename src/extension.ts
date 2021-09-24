@@ -81,6 +81,15 @@ export function activate(context: vscode.ExtensionContext): void {
     const semanticTokens = new SourcegraphSemanticTokenProvider()
     context.subscriptions.push(treeView)
     context.subscriptions.push(
+        vscode.commands.registerCommand('extension.goToFileInFolder', async (uri: string | undefined) => {
+            if (typeof uri === 'string') {
+                await goToFileCommand(fs, uri)
+            } else {
+                log.error(`extension.goToFileInFolder - invalid argument ${uri || 'undefined'}`)
+            }
+        })
+    )
+    context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.goToFile',
             handleCommandErrors('extension.goToFile', () => goToFileCommand(fs))

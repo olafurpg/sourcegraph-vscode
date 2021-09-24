@@ -186,6 +186,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
                 : vscode.TreeItemCollapsibleState.Collapsed,
             command,
             resourceUri: vscode.Uri.parse(uri.uri),
+            contextValue: uri.isFile() ? 'file' : 'directory',
         }
     }
 }

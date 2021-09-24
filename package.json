@@ -85,6 +85,11 @@
         "title": "Go to File"
       },
       {
+        "command": "extension.goToFileInFolder",
+        "category": "Sourcegraph",
+        "title": "Go to File in Folder"
+      },
+      {
         "command": "extension.goToRepository",
         "category": "Sourcegraph",
         "title": "Go to Repository"
@@ -151,6 +156,9 @@
           "group": "navigation",
           "when": "view == sourcegraph.files"
         }
+      ],
+      "view/item/context": [
+        {"command": "extension.goToFileInFolder", "when": "view == sourcegraph.files && viewItem == directory"}
       ]
     },
     "keybindings": [

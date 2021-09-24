@@ -109,9 +109,13 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         return [...this.fileNamesByRepository.keys()]
     }
 
-    public async allFileFromOpenRepositories(): Promise<RepositoryFileNames[]> {
+    public async allFileFromOpenRepositories(folder?: SourcegraphUri): Promise<RepositoryFileNames[]> {
         const promises: RepositoryFileNames[] = []
+        const folderRepositoryUri = folder?.repositoryUri()
         for (const [repositoryUri, downloadingFileNames] of this.fileNamesByRepository.entries()) {
+            if (folderRepositoryUri && repositoryUri !== folderRepositoryUri) {
+                continue
+            }
             try {
                 const fileNames = await downloadingFileNames
                 const uri = SourcegraphUri.parse(repositoryUri)
