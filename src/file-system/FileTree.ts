@@ -12,9 +12,6 @@ export class FileTree {
         return `FileTree(${this.uri.uri}, files.length=${this.files.length})`
     }
 
-    // TODO: optimize this for very large repos like chromium/chromium. It's
-    // usable in its current state but could be much faster if we use binary
-    // search to skip unrelated paths.
     public directChildren(directory: string): string[] {
         return this.directChildrenInternal(directory, true)
     }

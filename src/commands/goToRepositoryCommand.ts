@@ -6,6 +6,7 @@ import { openSourcegraphUriCommand } from './openSourcegraphUriCommand'
 import { BrowseQuickPickItem, SourcegraphQuickPick } from './SourcegraphQuickPick'
 import { recentlyOpenRepositoriesSetting } from '../settings/recentlyOpenRepositoriesSetting'
 import { endpointSetting } from '../settings/endpointSetting'
+import { log } from '../log'
 
 export async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): Promise<void> {
     const quick = new SourcegraphQuickPick(fs)
@@ -31,8 +32,8 @@ export async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): 
                     detail: query.text,
                 }
                 quick.pick.items = [item]
-            } catch {
-                // TODO: report helpful error message
+            } catch (error) {
+                log.error(`goToRepositoryCommand(${query.text})`, error)
             }
             return
         }

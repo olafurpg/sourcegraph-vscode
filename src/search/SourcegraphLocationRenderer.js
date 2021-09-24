@@ -1,4 +1,3 @@
-// TODO: try to use file extension `.mts` or see if we can add types.
 /**
  * Renders the 'application/sourcegraph-location' MIME type for Sourcegraph Notebooks
  *
