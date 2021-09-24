@@ -47,14 +47,6 @@ function checkChildren(directory: string, expected: string[]) {
     })
 }
 describe('FileTree', () => {
-    it('binarySearchStart', () => {
-        const end = tree.binarySearchDirectoryStart('src/browse/')
-        console.log(`end=${end} file=${tree.files[end]}`)
-    })
-    it('binarySearchEnd', () => {
-        const end = tree.binarySearchDirectoryEnd('src/browse/', 0)
-        console.log(`end=${end} file=${tree.files[end]}`)
-    })
     checkChildren('src', ['src/browse/', 'src/git/', 'src/config.ts', 'src/extension.ts', 'src/log.ts'])
     checkChildren('', [
         '.github/workflows/',

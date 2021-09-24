@@ -66,7 +66,7 @@ export class FileTree {
         return [...directDirectories, ...directFiles]
     }
 
-    public binarySearchDirectoryStart(directory: string): number {
+    private binarySearchDirectoryStart(directory: string): number {
         if (directory === '') {
             return 0
         }
@@ -76,7 +76,7 @@ export class FileTree {
         )
     }
 
-    public binarySearchDirectoryEnd(directory: string, low: number): number {
+    private binarySearchDirectoryEnd(directory: string, low: number): number {
         while (low < this.files.length && this.files[low].localeCompare(directory) <= 0) {
             low++
         }
@@ -86,7 +86,7 @@ export class FileTree {
         )
     }
 
-    public binarySearch({ low, high }: SearchRange, isGreater: (midpoint: number) => boolean): number {
+    private binarySearch({ low, high }: SearchRange, isGreater: (midpoint: number) => boolean): number {
         while (low < high) {
             const midpoint = Math.floor(low + (high - low) / 2)
             if (isGreater(midpoint)) {

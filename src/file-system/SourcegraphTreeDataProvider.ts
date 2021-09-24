@@ -43,6 +43,17 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     }
 
     public async getParent(uriString?: string): Promise<string | undefined> {
+        // Implementation note: this method is not implemented as
+        // `SourcegraphUri.parse(uri).parentUri()` because that would return
+        // URIs to directories that don't exist because they have no siblings
+        // and are therefore automatically merged with their parent. For example,
+        // imagine the following folder structure:
+        //   .gitignore
+        //   .github/workflows/ci.yml
+        //   src/command.ts
+        //   src/browse.ts
+        // The parent of `.github/workflows/ci.yml` is `.github/` because the `workflows/`
+        // directory has no sibling.
         if (!uriString) {
             return undefined
         }
