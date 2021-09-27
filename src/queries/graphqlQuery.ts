@@ -2,7 +2,7 @@ import { request, RequestOptions } from 'https'
 import { CancellationToken } from 'vscode'
 import { log } from '../log'
 import { debugEnabledSetting } from '../settings/debugEnabledSetting'
-import { endpointHostnameSetting } from '../settings/endpointSetting'
+import { endpointHostnameSetting, endpointSetting } from '../settings/endpointSetting'
 import { accessTokenSetting } from '../settings/accessTokenSetting'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
@@ -15,6 +15,7 @@ export function graphqlQueryWithAccessToken<A, B>(
     token: CancellationToken,
     accessToken: string
 ): Promise<B | undefined> {
+    accessToken = accessToken.trim()
     return new Promise<B | undefined>((resolve, reject) => {
         const data = JSON.stringify({
             query,
@@ -58,14 +59,10 @@ export function graphqlQueryWithAccessToken<A, B>(
         req.write(data)
         req.end()
         if (debugEnabledSetting()) {
-            const command: string[] = [
-                'api',
-                '-query',
-                query.trim().replace(/\n/g, ' ').replace(/ +/g, ' '),
-                '-vars',
-                JSON.stringify(variables),
-            ]
-            log.appendLine('src ' + command.map(part => `'${part}'`).join(' '))
+            const data: string = JSON.stringify({ query: query.replace(/\s+/g, '  '), variables })
+            log.appendLine(
+                `curl -H 'Authorization: token ${accessToken}' -d '${data}' ${endpointSetting()}/.api/graphql`
+            )
         }
         token.onCancellationRequested(() => {
             req.destroy()
