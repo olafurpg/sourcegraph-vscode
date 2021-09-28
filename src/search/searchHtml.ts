@@ -46,7 +46,7 @@ export async function searchHtml(
                     // Position the cursor at the first match on the line.
                     character = start
                 }
-                const end = start + length - 1
+                const end = start + length
                 highlightedPreview.push(escapeHtml(preview.slice(index, start)))
                 highlightedPreview.push('<mark>')
                 highlightedPreview.push(escapeHtml(preview.slice(start, end)))
