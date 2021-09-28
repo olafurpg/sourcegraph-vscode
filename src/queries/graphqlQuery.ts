@@ -3,46 +3,70 @@ import { CancellationToken } from 'vscode'
 import { log } from '../log'
 import { debugEnabledSetting } from '../settings/debugEnabledSetting'
 import { endpointHostnameSetting, endpointSetting } from '../settings/endpointSetting'
-import { accessTokenSetting, promptUserForAccessTokenSetting } from '../settings/accessTokenSetting'
+import {
+    accessTokenSetting,
+    deleteAccessTokenSetting,
+    promptUserForAccessTokenSetting,
+} from '../settings/accessTokenSetting'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
-    return accessTokenSetting().then(accessToken => graphqlQueryWithAccessToken(query, variables, token, accessToken))
+    return graphqlQueryWithAccessToken(query, variables, token, accessTokenSetting())
 }
 
 export function graphqlQueryWithAccessToken<A, B>(
     query: string,
     variables: A,
     token: CancellationToken,
-    accessToken: string
+    accessToken?: string
 ): Promise<B | undefined> {
-    accessToken = accessToken.trim()
+    if (accessToken) {
+        accessToken = accessToken.trim()
+    }
     return new Promise<B | undefined>((resolve, reject) => {
         const data = JSON.stringify({
             query,
             variables,
         })
+        const headers: any = {
+            'Content-Length': data.length,
+        }
+        log.appendLine(`token: ${accessToken || 'undefined'}`)
+        if (accessToken) {
+            headers.Authorization = `token ${accessToken}`
+        }
         const options: RequestOptions = {
             hostname: endpointHostnameSetting(),
             port: 443,
             path: '/.api/graphql',
             method: 'POST',
-            headers: {
-                Authorization: `token ${accessToken}`,
-                'Content-Length': data.length,
-            },
+            headers,
         }
         const curlCommand = (): string => {
             const data: string = JSON.stringify({ query: query.replace(/\s+/g, '  '), variables })
-            return `curl -H 'Authorization: token ${accessToken}' -d '${data}' ${endpointSetting()}/.api/graphql`
+            const authorization = accessToken ? `-H 'Authorization: token ${accessToken}' ` : ''
+            return `curl ${authorization}-d '${data}' ${endpointSetting()}/.api/graphql`
         }
         const onReject = async (error: any) => {
             if (error === 'Invalid access token.\n') {
                 // Prompt the user to update the access token setting and try again with the new setting.
                 try {
-                    const newToken = await promptUserForAccessTokenSetting('Invalid Sourcegraph Access Token')
-                    const newResult = await graphqlQueryWithAccessToken<A, B>(query, variables, token, newToken)
+                    if (accessToken) {
+                        await deleteAccessTokenSetting(accessToken)
+                    }
+                    const toFixThisProblem =
+                        process.env.SRC_ACCESS_TOKEN === accessToken
+                            ? '. To fix this problem, remove the environment variables SRC_ACCESS_TOKEN and reload VS Code.'
+                            : ''
+                    const newAccessToken = await promptUserForAccessTokenSetting(
+                        'Invalid Sourcegraph Access Token',
+                        `The server at ${endpointHostnameSetting()} is unable to use the access token ${accessToken}.` +
+                            toFixThisProblem
+                    )
+                    log.appendLine(`re-trying GraphQL query with new access token '${newAccessToken}'`)
+                    const newResult = await graphqlQueryWithAccessToken<A, B>(query, variables, token, newAccessToken)
                     resolve(newResult)
                 } catch (newError) {
+                    log.error('failed to get valid access token', error)
                     reject(newError)
                 }
             } else {

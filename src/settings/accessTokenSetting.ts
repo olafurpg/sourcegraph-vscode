@@ -5,21 +5,21 @@ import { currentUserQuery } from '../queries/currentUserQuery'
 import { endpointSetting } from './endpointSetting'
 import { readConfiguration } from './readConfiguration'
 
-let cachedAccessToken: Promise<string> | undefined
+let cachedAccessToken: Promise<string | undefined> | undefined
 const invalidAccessTokens = new Set<string>()
 
-export function accessTokenSetting(): Promise<string> {
-    const fromSettings = readConfiguration().get<string>('accessToken', '')
+export function accessTokenSetting(): string | undefined {
+    const fromSettings = readConfiguration().get<string>('accessToken')
     if (fromSettings) {
-        return Promise.resolve(fromSettings)
+        return fromSettings
     }
 
     const environmentVariable = process.env.SRC_ACCESS_TOKEN
     if (environmentVariable && !invalidAccessTokens.has(environmentVariable)) {
-        return Promise.resolve(environmentVariable)
+        return environmentVariable
     }
 
-    return promptUserForAccessTokenSetting()
+    return undefined
 }
 
 export async function deleteAccessTokenSetting(tokenValueToDelete: string): Promise<void> {
@@ -27,60 +27,54 @@ export async function deleteAccessTokenSetting(tokenValueToDelete: string): Prom
     const currentValue = readConfiguration().get<string>('accessToken')
     if (currentValue === tokenValueToDelete) {
         cachedAccessToken = undefined
-        await readConfiguration().update('accessToken', undefined)
+        await readConfiguration().update('accessToken', undefined, vscode.ConfigurationTarget.Global)
+    } else {
+        log.appendLine(
+            `can't delete access token '${tokenValueToDelete}' because it doesn't match ` +
+                `existing configuration value '${currentValue || 'undefined'}'`
+        )
     }
 }
 
-export async function promptUserForAccessTokenSetting(title?: string): Promise<string> {
+export function promptUserForAccessTokenSetting(title: string, detail: string): Promise<string | undefined> {
     if (!cachedAccessToken) {
-        cachedAccessToken = unconditionallyPromptUserForAccessTokenSetting(title)
+        cachedAccessToken = unconditionallyPromptUserForAccessTokenSetting(title, detail)
         cachedAccessToken.then(
-            () => {},
+            token => {
+                log.appendLine(`new access token from user: ${token || 'undefined'}`)
+            },
             error => {
-                log.error('askUserToCreateAccessToken', error)
+                log.error('promptUserForAccessTokenSetting', error)
                 cachedAccessToken = undefined
             }
         )
     }
     return cachedAccessToken
 }
-async function unconditionallyPromptUserForAccessTokenSetting(title?: string): Promise<string> {
+
+async function unconditionallyPromptUserForAccessTokenSetting(
+    title: string,
+    detail: string
+): Promise<string | undefined> {
     const openBrowserMessage = 'Open browser to create an access token'
-    const learnMore = 'Learn more about access tokens'
-    const pasteAccessToken = 'Paste existing access token'
-    const userChoice = await vscode.window.showErrorMessage(
-        title || 'Missing Sourcegraph Access Token',
-        {
-            modal: true,
-            detail: 'An access token is required to use the Sourcegraph extension. To fix this problem, create a new access token on the Sourcegraph website or set the $SRC_ACCESS_TOKEN environment variable and restart VS Code.',
-        },
-        openBrowserMessage,
-        learnMore,
-        pasteAccessToken
-    )
-    if (userChoice) {
-        const openUrl =
-            userChoice === openBrowserMessage
-                ? `${endpointSetting()}/user/settings/tokens`
-                : userChoice === learnMore
-                ? 'https://docs.sourcegraph.com/cli/how-tos/creating_an_access_token'
-                : undefined
-        if (openUrl) {
-            await open(openUrl)
-        }
-        const token = await vscode.window.showInputBox({
+    const logout = 'Continue without an access token'
+    const userChoice = await vscode.window.showErrorMessage(title, { modal: true, detail }, openBrowserMessage, logout)
+
+    if (userChoice === openBrowserMessage) {
+        await open(`${endpointSetting()}/user/settings/tokens`)
+        const newToken = await vscode.window.showInputBox({
             title: 'Paste your Sourcegraph access token here',
             ignoreFocusOut: true,
         })
-        if (token) {
+        if (newToken) {
             try {
-                const currentUser = await currentUserQuery(token)
+                const currentUser = await currentUserQuery(newToken)
+                await readConfiguration().update('accessToken', newToken, vscode.ConfigurationTarget.Global)
                 const successMessage = `Successfully logged into Sourcegraph as user '${currentUser}'`
                 log.appendLine(successMessage)
                 await vscode.window.showInformationMessage(successMessage)
-                await readConfiguration().update('accessToken', token, vscode.ConfigurationTarget.Global)
                 cachedAccessToken = undefined
-                return token
+                return newToken
             } catch {
                 await vscode.window.showErrorMessage(
                     "Invalid Access Token. To fix this problem, update the 'sourcegraph.accessToken' setting and try again"
@@ -92,7 +86,8 @@ async function unconditionallyPromptUserForAccessTokenSetting(title?: string): P
     } else {
         log.error('askUserToCreateAccessToken - The user decided not to open the browser')
     }
-    throw new Error('No access token')
+
+    return undefined
 }
 
 export async function updateAccessTokenSetting(newValue?: string): Promise<void> {

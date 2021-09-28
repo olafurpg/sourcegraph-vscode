@@ -45,6 +45,10 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
     ): Promise<void> {
         for (const cell of cells) {
             const execution = controller.createNotebookCellExecution(cell)
+            execution.token.onCancellationRequested(() => {
+                log.appendLine(`cancelled execution ${cell.index}`)
+                execution.end(false)
+            })
             execution.executionOrder = ++this.order
             try {
                 execution.start(Date.now())
