@@ -210,7 +210,6 @@
       }
     ],
     "configuration": {
-      "type": "object",
       "title": "Sourcegraph",
       "properties": {
         "sourcegraph.url": {
@@ -218,28 +217,28 @@
             "string"
           ],
           "default": "https://sourcegraph.com",
-          "description": "The base URL of the Sourcegraph instance to use."
+          "markdownDescription": "The base URL of the Sourcegraph instance to use."
         },
         "sourcegraph.accessToken": {
           "type": [
             "string"
           ],
           "default": "",
-          "description": "The access token to query the Sourcegraph API. Create a new access token at https://sourcegraph.com/users/settings/tokens"
+          "markdownDescription": "The access token to query the Sourcegraph API. Create a new access token at https://sourcegraph.com/users/settings/tokens"
         },
         "sourcegraph.remoteUrlReplacements": {
           "type": [
             "object"
           ],
           "default": {},
-          "description": "For each item in this object, replace key with value in the remote url."
+          "markdownDescription": "For each item in this object, replace key with value in the remote url."
         },
         "sourcegraph.defaultBranch": {
           "type": [
             "string"
           ],
           "default": "",
-          "description": "Always open files at this default branch."
+          "markdownDescription": "Always open files at this default branch."
         },
         "sourcegraph.debug": {
           "type": "boolean",
