@@ -8,18 +8,30 @@ import { readConfiguration } from './readConfiguration'
 let cachedAccessToken: Promise<string> | undefined
 
 export function accessTokenSetting(): Promise<string> {
-    const environmentVariable = process.env.SRC_ACCESS_TOKEN
-    if (environmentVariable) {
-        return Promise.resolve(environmentVariable)
-    }
-
     const fromSettings = readConfiguration().get<string>('accessToken', '')
     if (fromSettings) {
         return Promise.resolve(fromSettings)
     }
 
+    const environmentVariable = process.env.SRC_ACCESS_TOKEN
+    if (environmentVariable) {
+        return Promise.resolve(environmentVariable)
+    }
+
+    return promptUserForAccessTokenSetting()
+}
+
+export async function deleteAccessTokenSetting(tokenValueToDelete: string): Promise<void> {
+    const currentValue = readConfiguration().get<string>('accessToken')
+    if (currentValue === tokenValueToDelete) {
+        cachedAccessToken = undefined
+        await readConfiguration().update('accessToken', undefined)
+    }
+}
+
+export async function promptUserForAccessTokenSetting(title?: string): Promise<string> {
     if (!cachedAccessToken) {
-        cachedAccessToken = askUserToCreateAccessToken()
+        cachedAccessToken = unconditionallyPromptUserForAccessTokenSetting(title)
         cachedAccessToken.then(
             () => {},
             error => {
@@ -30,27 +42,30 @@ export function accessTokenSetting(): Promise<string> {
     }
     return cachedAccessToken
 }
-
-async function askUserToCreateAccessToken(): Promise<string> {
+async function unconditionallyPromptUserForAccessTokenSetting(title?: string): Promise<string> {
     const openBrowserMessage = 'Open browser to create an access token'
     const learnMore = 'Learn more about access tokens'
+    const pasteAccessToken = 'Paste existing access token'
     const userChoice = await vscode.window.showErrorMessage(
-        'Missing Sourcegraph Access Token',
+        title || 'Missing Sourcegraph Access Token',
         {
             modal: true,
             detail: 'An access token is required to use the Sourcegraph extension. To fix this problem, create a new access token on the Sourcegraph website or set the $SRC_ACCESS_TOKEN environment variable and restart VS Code.',
         },
         openBrowserMessage,
-        learnMore
+        learnMore,
+        pasteAccessToken
     )
-    const openUrl =
-        userChoice === openBrowserMessage
-            ? `${endpointSetting()}/user/settings/tokens`
-            : userChoice === learnMore
-            ? 'https://docs.sourcegraph.com/cli/how-tos/creating_an_access_token'
-            : undefined
-    if (openUrl) {
-        await open(openUrl)
+    if (userChoice) {
+        const openUrl =
+            userChoice === openBrowserMessage
+                ? `${endpointSetting()}/user/settings/tokens`
+                : userChoice === learnMore
+                ? 'https://docs.sourcegraph.com/cli/how-tos/creating_an_access_token'
+                : undefined
+        if (openUrl) {
+            await open(openUrl)
+        }
         const token = await vscode.window.showInputBox({
             title: 'Paste your Sourcegraph access token here',
             ignoreFocusOut: true,
@@ -58,8 +73,11 @@ async function askUserToCreateAccessToken(): Promise<string> {
         if (token) {
             try {
                 const currentUser = await currentUserQuery(token)
-                log.appendLine(`Logged in successfully as '${currentUser}'`)
+                const successMessage = `Successfully logged into Sourcegraph as user '${currentUser}'`
+                log.appendLine(successMessage)
+                await vscode.window.showInformationMessage(successMessage)
                 await readConfiguration().update('accessToken', token, vscode.ConfigurationTarget.Global)
+                cachedAccessToken = undefined
                 return token
             } catch {
                 await vscode.window.showErrorMessage(
@@ -73,4 +91,8 @@ async function askUserToCreateAccessToken(): Promise<string> {
         log.error('askUserToCreateAccessToken - The user decided not to open the browser')
     }
     throw new Error('No access token')
+}
+
+export async function updateAccessTokenSetting(newValue?: string): Promise<void> {
+    await readConfiguration().update('accessToken', newValue)
 }
