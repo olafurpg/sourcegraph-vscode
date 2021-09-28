@@ -10,32 +10,82 @@ export function searchQueryResult(
 ): Promise<SearchResult | undefined> {
     return graphqlQuery<SearchParameters, SearchResult>(
         gql`
-            query Search($query: String!) {
-                search(query: $query, patternType: ${SearchPatternType[patternType]}) {
+            query ($query: String!) {
+                search(query: $query) {
                     results {
                         results {
+                            __typename
                             ... on FileMatch {
                                 ...FileMatchFields
                             }
+                            ... on CommitSearchResult {
+                                ...CommitSearchResultFields
+                            }
+                            ... on Repository {
+                                ...RepositoryFields
+                            }
                         }
-                        limitHit
-                        matchCount
-                        elapsedMilliseconds
+                        ...SearchResultsAlertFields
+                    }
+                }
+            }
+            fragment FileMatchFields on FileMatch {
+                repository {
+                    name
+                    url
+                }
+                file {
+                    name
+                    path
+                    url
+                    content
+                    commit {
+                        oid
+                    }
+                }
+                lineMatches {
+                    preview
+                    lineNumber
+                    offsetAndLengths
+                    limitHit
+                }
+            }
+
+            fragment CommitSearchResultFields on CommitSearchResult {
+                commit {
+                    message
+                    author {
+                        person {
+                            name
+                        }
+                    }
+                }
+                matches {
+                    url
+                    body {
+                        text
+                    }
+                    highlights {
+                        character
+                        line
+                        length
                     }
                 }
             }
 
-            fragment FileMatchFields on FileMatch {
-                file {
-                    url
-                }
-                repository {
-                    stars
-                }
-                lineMatches {
-                    lineNumber
-                    offsetAndLengths
-                    preview
+            fragment RepositoryFields on Repository {
+                name
+                stars
+            }
+
+            fragment SearchResultsAlertFields on SearchResults {
+                alert {
+                    title
+                    description
+                    proposedQueries {
+                        description
+                        query
+                    }
                 }
             }
         `,
@@ -89,7 +139,11 @@ export interface SearchResult {
         }
     }
 }
-interface SearchResultNode {
+
+export interface SearchResultNode {
+    __typename: string
+    name?: string
+    stars?: number
     file?: {
         url?: string
     }
@@ -97,10 +151,25 @@ interface SearchResultNode {
         stars?: number
     }
     lineMatches?: LineMatch[]
+    matches?: CommitMatch[]
 }
 
-interface LineMatch {
+export interface LineMatch {
     lineNumber?: number
     offsetAndLengths?: [number, number][]
     preview?: string
+}
+
+export interface CommitMatch {
+    url?: string
+    body?: {
+        text?: string
+    }
+    highlights?: CommitHighlight[]
+}
+
+export interface CommitHighlight {
+    character?: number
+    line?: number
+    length?: number
 }

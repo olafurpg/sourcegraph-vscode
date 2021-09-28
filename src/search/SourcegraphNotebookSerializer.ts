@@ -28,6 +28,9 @@ export class SourcegraphNotebookSerializer implements vscode.NotebookSerializer 
             const uriString: unknown = event.message?.uri
             if (event.message?.request === 'openEditor' && typeof uriString === 'string') {
                 let uri = SourcegraphUri.parse(uriString)
+                if (!uri.path) {
+                    uri = await fs.defaultFileUri(uri.repositoryName)
+                }
                 if (!uri.revision) {
                     uri = uri.withRevision((await fs.repositoryMetadata(uri.repositoryName))?.defaultBranch)
                 }

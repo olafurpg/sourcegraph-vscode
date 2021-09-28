@@ -30,7 +30,6 @@ export function graphqlQueryWithAccessToken<A, B>(
         const headers: any = {
             'Content-Length': data.length,
         }
-        log.appendLine(`token: ${accessToken || 'undefined'}`)
         if (accessToken) {
             headers.Authorization = `token ${accessToken}`
         }
