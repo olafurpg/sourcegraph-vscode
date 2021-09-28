@@ -71,7 +71,7 @@
     "viewsWelcome": [
       {
         "view": "sourcegraph.commands",
-        "contents": "[New Search Notebook](command:extension.newNotebook)\n[Go to Repository](command:extension.goToRepository)\n[Go to File](command:extension.goToFile)"
+        "contents": "[New Search Notebook](command:extension.newNotebook)\n[Go to Repository](command:extension.goToRepository)"
       },
       {
         "view": "sourcegraph.files",
