@@ -6,6 +6,7 @@ import { endpointSetting } from './endpointSetting'
 import { readConfiguration } from './readConfiguration'
 
 let cachedAccessToken: Promise<string> | undefined
+const invalidAccessTokens = new Set<string>()
 
 export function accessTokenSetting(): Promise<string> {
     const fromSettings = readConfiguration().get<string>('accessToken', '')
@@ -14,7 +15,7 @@ export function accessTokenSetting(): Promise<string> {
     }
 
     const environmentVariable = process.env.SRC_ACCESS_TOKEN
-    if (environmentVariable) {
+    if (environmentVariable && !invalidAccessTokens.has(environmentVariable)) {
         return Promise.resolve(environmentVariable)
     }
 
@@ -22,6 +23,7 @@ export function accessTokenSetting(): Promise<string> {
 }
 
 export async function deleteAccessTokenSetting(tokenValueToDelete: string): Promise<void> {
+    invalidAccessTokens.add(tokenValueToDelete)
     const currentValue = readConfiguration().get<string>('accessToken')
     if (currentValue === tokenValueToDelete) {
         cachedAccessToken = undefined
