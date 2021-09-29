@@ -82,7 +82,11 @@ export function graphqlQueryWithAccessToken<A, B>(
                 const json = Buffer.concat(body).toString()
                 if (res.statusCode === 200) {
                     try {
-                        const parsed: B = JSON.parse(json)
+                        const parsed = JSON.parse(json)
+                        const errors = parsed['errors']
+                        if (errors) {
+                            reject(JSON.stringify(errors))
+                        }
                         resolve(parsed)
                     } catch (error) {
                         log.error(`graphql(${curlCommand()})`, error)

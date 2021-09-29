@@ -3,7 +3,7 @@ import { log } from '../log'
 import { SourcegraphFileSystemProvider } from './SourcegraphFileSystemProvider'
 import { SourcegraphUri } from './SourcegraphUri'
 
-export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<string> {
+export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
     constructor(public readonly fs: SourcegraphFileSystemProvider) {
         fs.onDidDownloadRepositoryFilenames(() => this.didChangeTreeData.fire(undefined))
     }
@@ -28,6 +28,15 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
             const didBecomeVisible = !this.isTreeViewVisible && event.visible
             this.isTreeViewVisible = event.visible
             if (didBecomeVisible) {
+                // NOTE: do not remove the line below even if you think it
+                // doesn't have an effect. Before you remove this line, make
+                // sure that the following steps don't cause the "Collapse All"
+                // button to become disabled:
+                //   1. Close "Files" view.
+                //   2. Execute "Reload window" command.
+                //   3. After VS Code loads, open the "Files" view.
+                this.didChangeTreeData.fire(undefined)
+
                 this.didFocus(this.activeUri).then(
                     () => {},
                     () => {}
@@ -43,47 +52,55 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     }
 
     public async getParent(uriString?: string): Promise<string | undefined> {
-        // Implementation note: this method is not implemented as
-        // `SourcegraphUri.parse(uri).parentUri()` because that would return
-        // URIs to directories that don't exist because they have no siblings
-        // and are therefore automatically merged with their parent. For example,
-        // imagine the following folder structure:
-        //   .gitignore
-        //   .github/workflows/ci.yml
-        //   src/command.ts
-        //   src/browse.ts
-        // The parent of `.github/workflows/ci.yml` is `.github/` because the `workflows/`
-        // directory has no sibling.
-        if (!uriString) {
-            return undefined
-        }
-        const uri = SourcegraphUri.parse(uriString)
-        if (!uri.path) {
-            return undefined
-        }
-        let ancestor: string | undefined = uri.repositoryUri()
-        let children = await this.getChildren(ancestor)
-        while (ancestor) {
-            const isParent = children?.includes(uriString)
-            if (isParent) {
-                break
+        // log.appendLine(`getParent(${uriString})`)
+        try {
+            // Implementation note: this method is not implemented as
+            // `SourcegraphUri.parse(uri).parentUri()` because that would return
+            // URIs to directories that don't exist because they have no siblings
+            // and are therefore automatically merged with their parent. For example,
+            // imagine the following folder structure:
+            //   .gitignore
+            //   .github/workflows/ci.yml
+            //   src/command.ts
+            //   src/browse.ts
+            // The parent of `.github/workflows/ci.yml` is `.github/` because the `workflows/`
+            // directory has no sibling.
+            if (!uriString) {
+                return undefined
             }
-            ancestor = children?.find(childUri => {
-                const child = SourcegraphUri.parse(childUri)
-                return child.path && uri.path?.startsWith(child.path + '/')
-            })
-            if (!ancestor) {
-                log.error(`getParent(${uriString || 'undefined'}) nothing startsWith`)
-                throw new Error('BOOM')
+            const uri = SourcegraphUri.parse(uriString)
+            if (!uri.path) {
+                return undefined
             }
-            children = await this.getChildren(ancestor)
+            let ancestor: string | undefined = uri.repositoryUri()
+            let children = await this.getChildren(ancestor)
+            while (ancestor) {
+                const isParent = children?.includes(uriString)
+                if (isParent) {
+                    break
+                }
+                ancestor = children?.find(childUri => {
+                    const child = SourcegraphUri.parse(childUri)
+                    return child.path && uri.path?.startsWith(child.path + '/')
+                })
+                if (!ancestor) {
+                    log.error(`getParent(${uriString || 'undefined'}) nothing startsWith`)
+                    throw new Error('BOOM')
+                }
+                children = await this.getChildren(ancestor)
+            }
+            return ancestor
+        } catch (error) {
+            log.error(`getParent(${uriString})`, error)
+            throw error
         }
-        return ancestor
     }
 
     public async getChildren(uriString?: string): Promise<string[] | undefined> {
+        // log.appendLine(`getChildren(${uriString})`)
         try {
             if (!uriString) {
+                // await this.getTreeItem(undefined)
                 const repos = [...this.fs.allRepositoryUris()]
                 return repos.map(repo => repo.replace('https://', 'sourcegraph://'))
             }
@@ -96,7 +113,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
             return directChildren
         } catch (error) {
             log.error(`getChildren(${uriString || ''})`, error)
-            return Promise.resolve(undefined)
+            throw error
         }
     }
 
@@ -106,6 +123,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     }
 
     public async didFocus(vscodeUri: vscode.Uri | undefined): Promise<void> {
+        // log.appendLine(`didFocus=${vscodeUri?.toString(true) || 'undefined'}`)
         this.didFocusToken.cancel()
         this.didFocusToken = new vscode.CancellationTokenSource()
         this.activeUri = vscodeUri
@@ -117,6 +135,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     }
 
     public async getTreeItem(uriString: string): Promise<vscode.TreeItem> {
+        // log.appendLine(`getTreeItem(${uriString})`)
         try {
             const fromCache = this.treeItemCache.get(uriString)
             if (fromCache) {
@@ -127,7 +146,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
             return this.newTreeItem(uri, parentUri ? SourcegraphUri.parse(parentUri) : undefined, 0)
         } catch (error) {
             log.error(`getTreeItem(${uriString})`, error)
-            return {}
+            throw error
         }
     }
 
@@ -139,12 +158,16 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         try {
             if (this.treeView) {
                 const parent = await this.getParent(uri.uri)
-                if (parent && !this.isExpandedNode.has(parent)) {
+                // if (parent && !this.isExpandedNode.has(parent)) {
+                if (parent) {
                     await this.didFocusString(SourcegraphUri.parse(parent), false, token)
+                } else {
+                    await this.getChildren(undefined)
                 }
                 if (token.isCancellationRequested) {
                     return
                 }
+                // log.appendLine(`didFocusString(${uri.uri})`)
                 await this.treeView.reveal(uri.uri, {
                     focus: true,
                     select: isDestinationNode,
@@ -154,16 +177,6 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         } catch (error) {
             log.error(`didFocusString(${uri.uri})`, error)
         }
-    }
-
-    private treeItemLabel(uri: SourcegraphUri, parent?: SourcegraphUri): string {
-        if (uri.path) {
-            if (parent?.path) {
-                return uri.path.slice(parent.path.length + 1)
-            }
-            return uri.path
-        }
-        return `${uri.repositoryName}${uri.revisionPart()}`
     }
 
     private newTreeItem(
@@ -178,11 +191,9 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
                   arguments: [uri.uri],
               }
             : undefined
-        const label = this.treeItemLabel(uri, parent)
-
         return {
             id: uri.uri,
-            label,
+            label: uri.treeItemLabel(parent),
             tooltip: uri.uri.replace('sourcegraph://', 'https://'),
             collapsibleState: uri.isFile()
                 ? vscode.TreeItemCollapsibleState.None

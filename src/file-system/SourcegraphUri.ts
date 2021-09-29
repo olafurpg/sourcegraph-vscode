@@ -11,7 +11,8 @@ export class SourcegraphUri {
         public readonly repositoryName: string,
         public readonly revision: string,
         public readonly path: string | undefined,
-        public readonly position: Position | undefined
+        public readonly position: Position | undefined,
+        public readonly compareRange: CompareRange | undefined
     ) {}
 
     public withRevision(newRevision: string | undefined): SourcegraphUri {
@@ -58,6 +59,14 @@ export class SourcegraphUri {
         })
     }
 
+    public isCommit(): boolean {
+        return this.uri.includes('/-/commit/')
+    }
+
+    public isCompare(): boolean {
+        return this.uri.includes('/-/compare/') && this.compareRange !== undefined
+    }
+
     public isDirectory(): boolean {
         return this.uri.includes('/-/tree/')
     }
@@ -74,22 +83,47 @@ export class SourcegraphUri {
             path?: string
             position?: Position
             isDirectory?: boolean
+            isCommit?: boolean
+            compareRange?: CompareRange
         }
     ): SourcegraphUri {
-        const revisionPart = optional?.revision ? `@${optional.revision}` : ''
-        const directoryPart = optional?.isDirectory ? 'tree' : 'blob'
-        const pathPart = optional?.path ? `/-/${directoryPart}/${optional?.path}` : ''
+        const revisionPart = optional?.revision && !optional.isCommit ? `@${optional.revision}` : ''
+        const directoryPart = optional?.isDirectory
+            ? 'tree'
+            : optional?.isCommit
+            ? 'commit'
+            : optional?.compareRange
+            ? 'compare'
+            : 'blob'
+        const pathPart = optional?.compareRange
+            ? `/-/compare/${optional.compareRange.base}...${optional.compareRange.head}`
+            : optional?.isCommit && optional.revision
+            ? `/-/commit/${optional.revision}`
+            : optional?.path
+            ? `/-/${directoryPart}/${optional?.path}`
+            : ''
+        const uri = `sourcegraph://${host}/${repositoryName}${revisionPart}${pathPart}`
         return new SourcegraphUri(
-            `sourcegraph://${host}/${repositoryName}${revisionPart}${pathPart}`,
+            uri,
             host,
             repositoryName,
             optional?.revision || '',
             optional?.path,
-            optional?.position
+            optional?.position,
+            optional?.compareRange
         )
     }
     public repositoryUri(): string {
         return `sourcegraph://${this.host}/${this.repositoryName}${this.revisionPart()}`
+    }
+    public treeItemLabel(parent?: SourcegraphUri): string {
+        if (this.path) {
+            if (parent?.path) {
+                return this.path.slice(parent.path.length + 1)
+            }
+            return this.path
+        }
+        return `${this.repositoryName}${this.revisionPart()}`
     }
     public revisionPart(): string {
         return this.revision ? `@${this.revision}` : ''
@@ -123,22 +157,31 @@ export class SourcegraphUri {
         } else {
             repoRevision = pathname.slice(0, indexOfSeparator) // the whole string leading up to the separator (allows revision to be multiple path parts)
         }
-        const { repositoryName, revision } = parseRepoRevision(repoRevision)
+        let { repositoryName, revision } = parseRepoRevision(repoRevision)
 
         let path: string | undefined
-        // let commitRange: string | undefined
+        let compareRange: CompareRange | undefined
         const treeSeparator = pathname.indexOf('/-/tree/')
         const blobSeparator = pathname.indexOf('/-/blob/')
-        // const comparisonSeparator = pathname.indexOf('/-/compare/')
+        const commitSeparator = pathname.indexOf('/-/commit/')
+        const comparisonSeparator = pathname.indexOf('/-/compare/')
         if (treeSeparator !== -1) {
             path = decodeURIComponent(pathname.slice(treeSeparator + '/-/tree/'.length))
         }
         if (blobSeparator !== -1) {
             path = decodeURIComponent(pathname.slice(blobSeparator + '/-/blob/'.length))
         }
-        // if (comparisonSeparator !== -1) {
-        //     commitRange = pathname.slice(comparisonSeparator + '/-/compare/'.length)
-        // }
+        if (commitSeparator !== -1) {
+            path = decodeURIComponent(pathname.slice(commitSeparator + '/-/commit/'.length))
+        }
+        if (comparisonSeparator !== -1) {
+            const range = pathname.slice(comparisonSeparator + '/-/compare/'.length)
+            const parts = range.split('...')
+            if (parts.length === 2) {
+                const [base, head] = parts
+                compareRange = { base, head }
+            }
+        }
         let position: Position | undefined
         // let range: Range | undefined
 
@@ -159,7 +202,19 @@ export class SourcegraphUri {
             // }
         }
         const isDirectory = uri.includes('/-/tree/')
-        return SourcegraphUri.fromParts(url.host, repositoryName, { revision, path, position, isDirectory })
+        const isCommit = uri.includes('/-/commit/')
+        if (isCommit) {
+            revision = url.pathname.replace(new RegExp('.*/-/commit/([^/]+).*'), (_unused, oid: string) => oid)
+            path = path?.slice(`${revision}/`.length)
+        }
+        return SourcegraphUri.fromParts(url.host, repositoryName, {
+            revision,
+            path,
+            position,
+            isDirectory,
+            isCommit,
+            compareRange,
+        })
     }
 }
 
@@ -353,4 +408,9 @@ function parseRepoRevision(repoRevision: string): ParsedRepoRevision {
         revision: revision && decodeURIComponent(revision),
         rawRevision: revision,
     }
+}
+
+export interface CompareRange {
+    base: string
+    head: string
 }

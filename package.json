@@ -76,6 +76,10 @@
       {
         "view": "sourcegraph.files",
         "contents": "No open files."
+      },
+      {
+        "view": "sourcegraph.diffs",
+        "contents": "No open diffs."
       }
     ],
     "commands": [
@@ -95,6 +99,13 @@
         "title": "Go to Repository"
       },
       {
+        "command": "extension.updateCompareRange",
+        "category": "Sourcegraph",
+        "title": "Update Compare Range",
+        "enablement": "a == b",
+        "//": "always disabled because we only invoke it programmatically with custom commands"
+      },
+      {
         "command": "extension.switchGitRevision",
         "category": "Sourcegraph",
         "title": "View File at Git Revision",
@@ -106,6 +117,15 @@
         "title": "Open File in Web Browser",
         "enablement": "resourceScheme == sourcegraph || focusedView == 'sourcegraph.files'"
       },
+      { "command": "extension.green1", "category": "Sourcegraph", "title": "green1",   "icon": "icons/green-square.svg" , "enablement": "a == b"},
+      { "command": "extension.green2", "category": "Sourcegraph", "title": "green2",   "icon": "icons/green-square.svg" , "enablement": "a == b"},
+      { "command": "extension.green3", "category": "Sourcegraph", "title": "green3",   "icon": "icons/green-square.svg" , "enablement": "a == b"},
+      { "command": "extension.orange1", "category": "Sourcegraph", "title": "orange1", "icon": "icons/orange-square.svg", "enablement": "a == b"},
+      { "command": "extension.orange2", "category": "Sourcegraph", "title": "orange2", "icon": "icons/orange-square.svg", "enablement": "a == b"},
+      { "command": "extension.orange3", "category": "Sourcegraph", "title": "orange3", "icon": "icons/orange-square.svg", "enablement": "a == b"},
+      { "command": "extension.red1", "category": "Sourcegraph", "title": "red1",       "icon": "icons/red-square.svg"   , "enablement": "a == b"},
+      { "command": "extension.red2", "category": "Sourcegraph", "title": "red2",       "icon": "icons/red-square.svg"   , "enablement": "a == b"},
+      { "command": "extension.red3", "category": "Sourcegraph", "title": "red3",       "icon": "icons/red-square.svg"   , "enablement": "a == b"},
       {
         "command": "extension.newNotebook",
         "category": "Sourcegraph",
@@ -158,6 +178,10 @@
         {
           "id": "sourcegraph.files",
           "name": "Files"
+        },
+        {
+          "id": "sourcegraph.diffs",
+          "name": "Diffs"
         }
       ]
     },
@@ -172,7 +196,16 @@
       "view/item/context": [
         {"command": "extension.goToFileInFolder", "when": "view == sourcegraph.files && viewItem == directory"},
         {"command": "extension.switchGitRevision", "when": "view == sourcegraph.files && viewItem == file"},
-        {"command": "extension.openFileInBrowser", "when": "view == sourcegraph.files && viewItem == file"}
+        {"command": "extension.openFileInBrowser", "when": "view == sourcegraph.files && viewItem == file"},
+        {"command": "extension.green1",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green1/"},
+        {"command": "extension.green2",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green2/"},
+        {"command": "extension.green3",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green3/"},
+        {"command": "extension.orange1", "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /orange1/"},
+        {"command": "extension.orange2", "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /orange2/"},
+        {"command": "extension.orange3", "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /orange3/"},
+        {"command": "extension.red1",    "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /red1/"},
+        {"command": "extension.red2",    "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /red2/"},
+        {"command": "extension.red3",    "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /red3/"}
       ]
     },
     "keybindings": [
