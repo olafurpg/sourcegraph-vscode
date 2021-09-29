@@ -15,9 +15,10 @@ import { searchSelectionCommand } from './commands/searchSelectionCommand'
 import { SourcegraphHoverProvider } from './code-intel/SourcegraphHoverProvider'
 import { SourcegraphDefinitionProvider } from './code-intel/SourcegraphDefinitionProvider'
 import { SourcegraphReferenceProvider } from './code-intel/SourcegraphReferenceProvider'
-import { SourcegraphTreeDataProvider } from './file-system/SourcegraphTreeDataProvider'
+import { FilesTreeDataProvider } from './file-system/FilesTreeDataProvider'
 import { switchGitRevisionCommand } from './commands/switchGitRevisionCommand'
 import { openFileInBrowserCommand } from './commands/openFileInBrowserCommand'
+import { DiffsTreeDataProvider } from './file-system/DiffsTreeDataProvider'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const { version } = require('../package.json')
@@ -74,14 +75,26 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerHoverProvider({ scheme: 'sourcegraph' }, new SourcegraphHoverProvider(fs))
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, new SourcegraphDefinitionProvider(fs))
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, referenceProvider)
-    const treeDataProvider = new SourcegraphTreeDataProvider(fs)
-    const treeView = vscode.window.createTreeView<string>('sourcegraph.files', {
-        treeDataProvider,
+
+    const filesTreeProvider = new FilesTreeDataProvider(fs)
+    const filesTreeView = vscode.window.createTreeView<string>('sourcegraph.files', {
+        treeDataProvider: filesTreeProvider,
         showCollapseAll: true,
     })
-    treeDataProvider.setTreeView(treeView)
+    filesTreeProvider.setTreeView(filesTreeView)
+
+    const diffsTreeProvider = new DiffsTreeDataProvider(fs)
+    const diffsTreeView = vscode.window.createTreeView('sourcegraph.diffs', {
+        treeDataProvider: diffsTreeProvider,
+        showCollapseAll: true,
+    })
+
+    diffsTreeProvider.setTreeView(diffsTreeView)
+    for (const treeView of [filesTreeView, diffsTreeView]) {
+        context.subscriptions.push(treeView)
+    }
+
     const semanticTokens = new SourcegraphSemanticTokenProvider()
-    context.subscriptions.push(treeView)
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.goToFileInFolder', async (uri: string | undefined) => {
             if (typeof uri === 'string') {
@@ -107,7 +120,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand(
             'extension.switchGitRevision',
             handleCommandErrors('extension.switchGitRevision', (uri: string | undefined) =>
-                switchGitRevisionCommand(treeDataProvider, uri)
+                switchGitRevisionCommand(filesTreeProvider, uri)
             )
         )
     )
@@ -115,7 +128,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand(
             'extension.openFileInBrowser',
             handleCommandErrors('extension.openFileInBrowser', (uri: string | undefined) =>
-                openFileInBrowserCommand(treeDataProvider, uri)
+                openFileInBrowserCommand(filesTreeProvider, uri)
             )
         )
     )
@@ -128,7 +141,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.focusActiveFile',
-            handleCommandErrors('extension.focusActiveFile', () => treeDataProvider.focusActiveFile())
+            handleCommandErrors('extension.focusActiveFile', () => filesTreeProvider.focusActiveFile())
         )
     )
     context.subscriptions.push(
@@ -149,13 +162,15 @@ export function activate(context: vscode.ExtensionContext): void {
         { language: 'sourcegraph' },
         new SourcegraphCompletionItemProvider()
     )
-    context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(editor => treeDataProvider.didFocus(editor?.document.uri))
-    )
-    treeDataProvider.didFocus(vscode.window.activeTextEditor?.document.uri).then(
-        () => {},
-        () => {}
-    )
+    for (const treeProvider of [filesTreeProvider, diffsTreeProvider]) {
+        context.subscriptions.push(
+            vscode.window.onDidChangeActiveTextEditor(editor => treeProvider.didFocus(editor?.document.uri))
+        )
+        treeProvider.didFocus(vscode.window.activeTextEditor?.document.uri).then(
+            () => {},
+            () => {}
+        )
+    }
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(fs), {})
 }
 

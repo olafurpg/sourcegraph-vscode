@@ -3,7 +3,7 @@ import { log } from '../log'
 import { SourcegraphFileSystemProvider } from './SourcegraphFileSystemProvider'
 import { SourcegraphUri } from './SourcegraphUri'
 
-export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<string> {
+export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
     constructor(public readonly fs: SourcegraphFileSystemProvider) {
         fs.onDidDownloadRepositoryFilenames(() => this.didChangeTreeData.fire(undefined))
     }
@@ -106,6 +106,7 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
     }
 
     public async didFocus(vscodeUri: vscode.Uri | undefined): Promise<void> {
+        log.appendLine(`didFocus=${vscodeUri?.toString(true) || 'undefined'}`)
         this.didFocusToken.cancel()
         this.didFocusToken = new vscode.CancellationTokenSource()
         this.activeUri = vscodeUri
@@ -156,16 +157,6 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
         }
     }
 
-    private treeItemLabel(uri: SourcegraphUri, parent?: SourcegraphUri): string {
-        if (uri.path) {
-            if (parent?.path) {
-                return uri.path.slice(parent.path.length + 1)
-            }
-            return uri.path
-        }
-        return `${uri.repositoryName}${uri.revisionPart()}`
-    }
-
     private newTreeItem(
         uri: SourcegraphUri,
         parent: SourcegraphUri | undefined,
@@ -178,11 +169,9 @@ export class SourcegraphTreeDataProvider implements vscode.TreeDataProvider<stri
                   arguments: [uri.uri],
               }
             : undefined
-        const label = this.treeItemLabel(uri, parent)
-
         return {
             id: uri.uri,
-            label,
+            label: uri.treeItemLabel(parent),
             tooltip: uri.uri.replace('sourcegraph://', 'https://'),
             collapsibleState: uri.isFile()
                 ? vscode.TreeItemCollapsibleState.None

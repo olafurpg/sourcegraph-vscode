@@ -1,8 +1,14 @@
 import * as vscode from 'vscode'
 import { SourcegraphFileSystemProvider } from '../file-system/SourcegraphFileSystemProvider'
-import { SourcegraphUri } from '../file-system/SourcegraphUri'
+import { CompareRange, SourcegraphUri } from '../file-system/SourcegraphUri'
+import { log } from '../log'
 
 export async function openSourcegraphUriCommand(fs: SourcegraphFileSystemProvider, uri: SourcegraphUri): Promise<void> {
+    log.appendLine(`uri=${uri.uri}`)
+    if (uri.compareRange) {
+        await openCompareUri(uri, uri.compareRange)
+        return
+    }
     if (!uri.revision) {
         const metadata = await fs.repositoryMetadata(uri.repositoryName)
         uri = uri.withRevision(metadata?.defaultBranch || 'HEAD')
@@ -13,6 +19,20 @@ export async function openSourcegraphUriCommand(fs: SourcegraphFileSystemProvide
         selection,
         viewColumn: vscode.ViewColumn.Active,
     })
+}
+
+async function openCompareUri(uri: SourcegraphUri, compareRange: CompareRange): Promise<void> {
+    try {
+        log.appendLine(`openCompareUri uri=${uri.uri} compareRange=${JSON.stringify(compareRange)}`)
+        await vscode.commands.executeCommand(
+            'vscode.diff',
+            vscode.Uri.parse('sourcegraph://sourcegraph.com/github.com/scalameta/metals@v0.10.0/-/blob/build.sbt'),
+            vscode.Uri.parse('sourcegraph://sourcegraph.com/github.com/scalameta/metals@v0.10.7/-/blob/build.sbt'),
+            'build.sbt (v0.10.0 <-> v0.10.7)'
+        )
+    } catch (error) {
+        log.error(`openCompareUri(${uri.uri})`, error)
+    }
 }
 
 function getSelection(uri: SourcegraphUri, textDocument: vscode.TextDocument): vscode.Range | undefined {

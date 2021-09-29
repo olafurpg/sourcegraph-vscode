@@ -1,4 +1,4 @@
-import { SourcegraphTreeDataProvider } from '../file-system/SourcegraphTreeDataProvider'
+import { FilesTreeDataProvider } from '../file-system/FilesTreeDataProvider'
 import { SourcegraphUri } from '../file-system/SourcegraphUri'
 import { log } from '../log'
 import { GitReference, gitReferencesQuery } from '../queries/gitReferencesQuery'
@@ -6,7 +6,7 @@ import { openSourcegraphUriCommand } from './openSourcegraphUriCommand'
 import { SourcegraphQuickPick } from './SourcegraphQuickPick'
 
 export async function switchGitRevisionCommand(
-    tree: SourcegraphTreeDataProvider,
+    tree: FilesTreeDataProvider,
     uriString: string | undefined
 ): Promise<void> {
     const quick = new SourcegraphQuickPick(tree.fs)

@@ -28,7 +28,6 @@ export async function goToRepositoryCommand(fs: SourcegraphFileSystemProvider): 
                     uri: uri.uri,
                     label: recentlyOpenRepositoriesSetting.label(uri.repositoryName),
                     description: uri.path,
-                    unresolvedRepositoryName: uri.repositoryName,
                     detail: query.text,
                 }
                 quick.pick.items = [item]

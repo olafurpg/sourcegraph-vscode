@@ -76,6 +76,10 @@
       {
         "view": "sourcegraph.files",
         "contents": "No open files."
+      },
+      {
+        "view": "sourcegraph.diffs",
+        "contents": "No open diffs."
       }
     ],
     "commands": [
@@ -158,6 +162,10 @@
         {
           "id": "sourcegraph.files",
           "name": "Files"
+        },
+        {
+          "id": "sourcegraph.diffs",
+          "name": "Diffs"
         }
       ]
     },
