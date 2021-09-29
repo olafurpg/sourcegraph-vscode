@@ -4,15 +4,20 @@ const outputChannel = vscode.window.createOutputChannel('Sourcegraph')
 export const log = {
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
     error: (what: string, error?: any): void => {
-        const errorMessage =
-            error instanceof Error
-                ? ` ${error.message} ${error.stack || ''}`
-                : error !== undefined
-                ? ` ${JSON.stringify(error)}`
-                : ''
-        outputChannel.appendLine(`ERROR ${what}${errorMessage}`)
+        outputChannel.appendLine(`ERROR ${errorMessage(what, error)}`)
     },
     appendLine: (message: string): void => {
         outputChannel.appendLine(message)
     },
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function errorMessage(what: string, error?: any): string {
+    const errorMessage =
+        error instanceof Error
+            ? ` ${error.message} ${error.stack || ''}`
+            : error !== undefined
+            ? ` ${JSON.stringify(error)}`
+            : ''
+    return what + errorMessage
 }
