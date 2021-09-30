@@ -60,7 +60,7 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
                         label: `${node.kind[0].toUpperCase()}${node.kind.slice(1)}: ${
                             this.compareRange(node)[node.kind]
                         }`,
-                        resourceUri: vscode.Uri.parse(`sourcegraph://host/.gitignore`),
+                        resourceUri: vscode.Uri.parse('sourcegraph://host/.gitignore'),
                         tooltip: `Update ${node.kind} revision`,
                         command: {
                             command: 'extension.updateCompareRange',
@@ -276,7 +276,6 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
 
         const fileStats = fileDiffStats(uri, fileDiff, comparison)
         const label = uri.treeItemLabel(parent)
-        log.appendLine(`label=${label} contextValue=${fileStats.contextValue}`)
         return {
             id: childNode.toString(),
             label,
@@ -316,7 +315,7 @@ function fileDiffStats(
             }
         }
     }
-    let parts: string[] = []
+    const parts: string[] = []
     const addCount = (what: string, count: number): void => {
         if (count < 1) {
             return
@@ -397,8 +396,8 @@ class DiffNode {
     }
     private static fromAny(any: any): DiffNode {
         const repositoryName = any?.repositoryName
-        if (typeof repositoryName != 'string') {
-            throw new Error(`DiffUri.fromAny() missing repositoryName`)
+        if (typeof repositoryName !== 'string') {
+            throw new TypeError('DiffUri.fromAny() missing repositoryName')
         }
         let kind: DiffNodeKind | undefined
         if (any?.kind === 'base' || any?.kind === 'head' || any?.kind === 'commits' || any?.kind === 'files') {

@@ -99,11 +99,7 @@ export function activate(context: vscode.ExtensionContext): void {
     for (const color of ['green', 'orange', 'red']) {
         for (const index of [1, 2, 3]) {
             const name = `extension.${color}${index}`
-            context.subscriptions.push(
-                vscode.commands.registerCommand(name, () => {
-                    log.appendLine(`COMMAND ${name}`)
-                })
-            )
+            context.subscriptions.push(vscode.commands.registerCommand(name, () => {}))
         }
     }
     context.subscriptions.push(
@@ -136,8 +132,8 @@ export function activate(context: vscode.ExtensionContext): void {
         )
     )
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.updateCompareRange', (...commandArguments) => {
-            updateCompareRange(diffsTreeProvider, commandArguments)
+        vscode.commands.registerCommand('extension.updateCompareRange', async (...commandArguments) => {
+            await updateCompareRange(diffsTreeProvider, commandArguments)
         })
     )
     context.subscriptions.push(

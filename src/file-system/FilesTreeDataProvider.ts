@@ -91,8 +91,11 @@ export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
             }
             return ancestor
         } catch (error) {
-            log.error(`getParent(${uriString})`, error)
-            throw error
+            log.error(`getParent(${uriString || 'undefined'})`, error)
+            if (error instanceof Error) {
+                throw error
+            }
+            return undefined
         }
     }
 
@@ -113,7 +116,10 @@ export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
             return directChildren
         } catch (error) {
             log.error(`getChildren(${uriString || ''})`, error)
-            throw error
+            if (error instanceof Error) {
+                throw error
+            }
+            return undefined
         }
     }
 
@@ -146,8 +152,11 @@ export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
             return this.newTreeItem(uri, parentUri ? SourcegraphUri.parse(parentUri) : undefined, 0)
         } catch (error) {
             log.error(`getTreeItem(${uriString})`, error)
-            throw error
+            if (error instanceof Error) {
+                throw error
+            }
         }
+        return {}
     }
 
     private async didFocusString(
