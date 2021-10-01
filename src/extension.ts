@@ -22,7 +22,7 @@ import { DiffsTreeDataProvider } from './file-system/DiffsTreeDataProvider'
 import { updateCompareRange } from './commands/updateCompareRangeCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-const { version } = require('../package.json')
+export const { version } = require('../package.json')
 
 /**
  * Displays an error message to the user.

@@ -62,6 +62,7 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
                         }`,
                         resourceUri: vscode.Uri.parse('sourcegraph://host/.gitignore'),
                         tooltip: `Update ${node.kind} revision`,
+                        contextValue: 'compareRange',
                         command: {
                             command: 'extension.updateCompareRange',
                             title: `Update ${node.kind} revision`,
@@ -272,7 +273,7 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
                               : this.fs.emptyFileUri()
                       ),
                       vscode.Uri.parse(uri.withRevision(range.head).uri),
-                      `${uri.basename()} (${range.base}...${range.head})`,
+                      `${uri.basename()} (${range.base} ↔ ${range.head})`,
                   ],
               }
             : undefined

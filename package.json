@@ -101,9 +101,13 @@
       {
         "command": "extension.updateCompareRange",
         "category": "Sourcegraph",
-        "title": "Update Compare Range",
+        "title": "Update this git revision",
+        "icon": {
+          "dark": "icons/dark/edit.svg",
+          "light": "icons/light/edit.svg"
+        },
         "enablement": "a == b",
-        "//": "always disabled because we only invoke it programmatically with custom commands"
+        "//": "Always disabled because users click on the item itself"
       },
       {
         "command": "extension.switchGitRevision",
@@ -198,6 +202,7 @@
         {"command": "extension.goToFileInFolder", "when": "view == sourcegraph.files && viewItem == directory"},
         {"command": "extension.switchGitRevision", "when": "view == sourcegraph.files && viewItem == file"},
         {"command": "extension.openFileInBrowser", "when": "view == sourcegraph.files && viewItem == file"},
+        {"command": "extension.updateCompareRange", "group": "inline", "when": "view == sourcegraph.diffs && viewItem == compareRange"},
         {"command": "extension.green1",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green1/"},
         {"command": "extension.green2",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green2/"},
         {"command": "extension.green3",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green3/"},

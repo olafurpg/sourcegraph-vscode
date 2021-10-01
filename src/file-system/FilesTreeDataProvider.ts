@@ -141,6 +141,9 @@ export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
             )
         if (vscodeUri && vscodeUri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
             const uri = this.fs.sourcegraphUri(vscodeUri)
+            if (uri.uri === this.fs.emptyFileUri()) {
+                return
+            }
             await this.fs.downloadFiles(uri)
             await this.didFocusString(uri, true, this.didFocusToken.token)
         }
