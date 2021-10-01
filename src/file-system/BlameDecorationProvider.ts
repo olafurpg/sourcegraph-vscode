@@ -1,8 +1,18 @@
 import * as vscode from 'vscode'
-export class BlameDecorationProvider implements vscode.FileDecorationProvider {
-    private didChangeFileDecorations = new vscode.EventEmitter<vscode.Uri[]>()
-    public onDidChangeFileDecorations?: vscode.Event<vscode.Uri[]> = this.didChangeFileDecorations.event
-    public provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): Promise<vscode.FileDecoration> {
-        throw new Error('Method not implemented.')
+import { SourcegraphFileSystemProvider } from './SourcegraphFileSystemProvider'
+export class BlameDecorationProvider {
+    constructor(public readonly fs: SourcegraphFileSystemProvider) {}
+    private cancelToken = new vscode.CancellationTokenSource()
+    public async onDidChangeTextEditorSelection(event: vscode.TextEditorSelectionChangeEvent): Promise<void> {
+        this.cancelToken.cancel()
+        this.cancelToken = new vscode.CancellationTokenSource()
+        await this.onCancelableDidChangeTextEditorSelection(event, this.cancelToken.token)
+    }
+
+    private onCancelableDidChangeTextEditorSelection(
+        event: vscode.TextEditorSelectionChangeEvent,
+        token: vscode.CancellationToken
+    ): Promise<void> {
+        return Promise.resolve()
     }
 }

@@ -20,6 +20,7 @@ import { switchGitRevisionCommand } from './commands/switchGitRevisionCommand'
 import { openFileInBrowserCommand } from './commands/openFileInBrowserCommand'
 import { DiffsTreeDataProvider } from './file-system/DiffsTreeDataProvider'
 import { updateCompareRange } from './commands/updateCompareRangeCommand'
+import { BlameDecorationProvider } from './file-system/BlameDecorationProvider'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 export const { version } = require('../package.json')
@@ -177,6 +178,12 @@ export function activate(context: vscode.ExtensionContext): void {
             () => {}
         )
     }
+    const blameDecorationProvider = new BlameDecorationProvider(fs)
+    context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection(event =>
+            blameDecorationProvider.onDidChangeTextEditorSelection(event)
+        )
+    )
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(fs), {})
 }
 
