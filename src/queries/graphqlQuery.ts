@@ -8,6 +8,7 @@ import {
     deleteAccessTokenSetting,
     promptUserForAccessTokenSetting,
 } from '../settings/accessTokenSetting'
+import { version } from '../extension'
 
 export function graphqlQuery<A, B>(query: string, variables: A, token: CancellationToken): Promise<B | undefined> {
     return graphqlQueryWithAccessToken(query, variables, token, accessTokenSetting())
@@ -29,6 +30,7 @@ export function graphqlQueryWithAccessToken<A, B>(
         })
         const headers: any = {
             'Content-Length': data.length,
+            'User-Agent': `VS Code/${version}`,
         }
         if (accessToken) {
             headers.Authorization = `token ${accessToken}`
