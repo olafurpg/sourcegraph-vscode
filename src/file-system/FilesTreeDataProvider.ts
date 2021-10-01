@@ -133,6 +133,12 @@ export class FilesTreeDataProvider implements vscode.TreeDataProvider<string> {
         this.didFocusToken.cancel()
         this.didFocusToken = new vscode.CancellationTokenSource()
         this.activeUri = vscodeUri
+        vscode.commands
+            .executeCommand('setContext', 'sourcegraph.canFocusActiveDocument', vscodeUri?.scheme === 'sourcegraph')
+            .then(
+                () => {},
+                () => {}
+            )
         if (vscodeUri && vscodeUri.scheme === 'sourcegraph' && this.treeView && this.isTreeViewVisible) {
             const uri = this.fs.sourcegraphUri(vscodeUri)
             await this.fs.downloadFiles(uri)

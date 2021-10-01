@@ -4,7 +4,6 @@ import { CompareRange, SourcegraphUri } from '../file-system/SourcegraphUri'
 import { log } from '../log'
 
 export async function openSourcegraphUriCommand(fs: SourcegraphFileSystemProvider, uri: SourcegraphUri): Promise<void> {
-    log.appendLine(`uri=${uri.uri}`)
     if (uri.compareRange) {
         await openCompareUri(uri, uri.compareRange)
         return
