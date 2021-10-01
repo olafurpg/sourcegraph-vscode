@@ -179,7 +179,7 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
 
     private oldPath(newPath: string, nodes: FileDiffNode[]): FileDiffNode | undefined {
         for (const node of nodes) {
-            if (newPath === node.newPath && node.oldPath) {
+            if (newPath === node.newPath) {
                 return node
             }
         }
@@ -261,18 +261,21 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
         fileDiff: FileDiffNode | undefined,
         comparison: RepositoryComparison
     ): vscode.TreeItem {
-        const command =
-            uri.isFile() && fileDiff?.oldPath
-                ? {
-                      command: 'vscode.diff',
-                      title: 'Compare files',
-                      arguments: [
-                          vscode.Uri.parse(uri.withRevision(range.base).withPath(fileDiff.oldPath).uri),
-                          vscode.Uri.parse(uri.withRevision(range.head).uri),
-                          `${uri.basename()} (${range.base}...${range.head})`,
-                      ],
-                  }
-                : undefined
+        const command = uri.isFile()
+            ? {
+                  command: 'vscode.diff',
+                  title: 'Compare files',
+                  arguments: [
+                      vscode.Uri.parse(
+                          fileDiff?.oldPath
+                              ? uri.withRevision(range.base).withPath(fileDiff.oldPath).uri
+                              : this.fs.emptyFileUri()
+                      ),
+                      vscode.Uri.parse(uri.withRevision(range.head).uri),
+                      `${uri.basename()} (${range.base}...${range.head})`,
+                  ],
+              }
+            : undefined
 
         const fileStats = fileDiffStats(uri, fileDiff, comparison)
         const label = uri.treeItemLabel(parent)

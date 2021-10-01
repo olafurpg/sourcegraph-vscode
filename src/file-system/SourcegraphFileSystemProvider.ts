@@ -40,13 +40,16 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
     public readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.didChangeFile.event
     public async stat(vscodeUri: vscode.Uri): Promise<vscode.FileStat> {
         const uri = this.sourcegraphUri(vscodeUri)
+        const now = Date.now()
+        if (uri.uri === this.emptyFileUri()) {
+            return { mtime: now, ctime: now, size: 0, type: vscode.FileType.File }
+        }
         const files = await this.downloadFiles(uri)
         const isFile = uri.path && files.includes(uri.path)
         const type = isFile ? vscode.FileType.File : vscode.FileType.Directory
         // log.appendLine(
         //     `stat(${uri.uri}) path=${uri.path || '""'} files.length=${files.length} type=${vscode.FileType[type]}`
         // )
-        const now = Date.now()
         return {
             // It seems to be OK to return hardcoded values for the timestamps
             // and the byte size.  If it turns out the byte size needs to be
@@ -59,8 +62,15 @@ export class SourcegraphFileSystemProvider implements vscode.FileSystemProvider 
         }
     }
 
+    public emptyFileUri(): string {
+        return 'sourcegraph://sourcegraph.com/empty-file.txt'
+    }
+
     public async readFile(vscodeUri: vscode.Uri): Promise<Uint8Array> {
         const uri = this.sourcegraphUri(vscodeUri)
+        if (uri.uri === this.emptyFileUri()) {
+            return new Uint8Array()
+        }
         const blob = await this.fetchBlob(uri)
         return blob.content
     }

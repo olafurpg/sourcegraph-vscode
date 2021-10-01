@@ -96,12 +96,6 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     const semanticTokens = new SourcegraphSemanticTokenProvider()
-    for (const color of ['green', 'orange', 'red']) {
-        for (const index of [1, 2, 3]) {
-            const name = `extension.${color}${index}`
-            context.subscriptions.push(vscode.commands.registerCommand(name, () => {}))
-        }
-    }
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.goToFileInFolder', async (uri: string | undefined) => {
             if (typeof uri === 'string') {
