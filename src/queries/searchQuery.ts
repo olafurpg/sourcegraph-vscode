@@ -152,6 +152,9 @@ export interface SearchResultNode {
     }
     lineMatches?: LineMatch[]
     matches?: CommitMatch[]
+    commit?: {
+        message?: string
+    }
 }
 
 export interface LineMatch {

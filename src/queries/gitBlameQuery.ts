@@ -19,6 +19,7 @@ export async function gitBlameQuery(
                                     person {
                                         email
                                         displayName
+                                        avatarURL
                                         user {
                                             username
                                         }
@@ -26,9 +27,9 @@ export async function gitBlameQuery(
                                     date
                                 }
                                 message
-                                rev
                                 commit {
-                                    url
+                                    oid
+                                    abbreviatedOID
                                 }
                             }
                         }
@@ -44,16 +45,20 @@ export async function gitBlameQuery(
 
 export interface GitBlame {
     startLine: number
-    endLine: string
+    endLine: number
     author?: {
         person?: {
             email?: string
             displayName?: string
+            avatarURL?: string
         }
+        date?: string
     }
-    date?: string
     message?: string
-    rev?: string // oid
+    commit?: {
+        oid?: string
+        abbreviatedOID?: string
+    }
 }
 
 export interface GitBlameParameters {

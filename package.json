@@ -84,6 +84,13 @@
     ],
     "commands": [
       {
+        "command": "extension.goToCommit",
+        "category": "Sourcegraph",
+        "title": "Go to Commit",
+        "enablement": "a = b",
+        "//": "Always disabled because we only trigger it programmatically"
+      },
+      {
         "command": "extension.goToFile",
         "category": "Sourcegraph",
         "title": "Go to File"
@@ -121,15 +128,69 @@
         "title": "Open File in Web Browser",
         "enablement": "resourceScheme == sourcegraph || focusedView == 'sourcegraph.files'"
       },
-      { "command": "extension.green1", "category": "Sourcegraph", "title": "green1",   "icon": "icons/green-square.svg" , "enablement": "a == b"},
-      { "command": "extension.green2", "category": "Sourcegraph", "title": "green2",   "icon": "icons/green-square.svg" , "enablement": "a == b"},
-      { "command": "extension.green3", "category": "Sourcegraph", "title": "green3",   "icon": "icons/green-square.svg" , "enablement": "a == b"},
-      { "command": "extension.orange1", "category": "Sourcegraph", "title": "orange1", "icon": "icons/orange-square.svg", "enablement": "a == b"},
-      { "command": "extension.orange2", "category": "Sourcegraph", "title": "orange2", "icon": "icons/orange-square.svg", "enablement": "a == b"},
-      { "command": "extension.orange3", "category": "Sourcegraph", "title": "orange3", "icon": "icons/orange-square.svg", "enablement": "a == b"},
-      { "command": "extension.red1", "category": "Sourcegraph", "title": "red1",       "icon": "icons/red-square.svg"   , "enablement": "a == b"},
-      { "command": "extension.red2", "category": "Sourcegraph", "title": "red2",       "icon": "icons/red-square.svg"   , "enablement": "a == b"},
-      { "command": "extension.red3", "category": "Sourcegraph", "title": "red3",       "icon": "icons/red-square.svg"   , "enablement": "a == b"},
+      {
+        "command": "extension.green1",
+        "category": "Sourcegraph",
+        "title": "green1",
+        "icon": "icons/green-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.green2",
+        "category": "Sourcegraph",
+        "title": "green2",
+        "icon": "icons/green-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.green3",
+        "category": "Sourcegraph",
+        "title": "green3",
+        "icon": "icons/green-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.orange1",
+        "category": "Sourcegraph",
+        "title": "orange1",
+        "icon": "icons/orange-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.orange2",
+        "category": "Sourcegraph",
+        "title": "orange2",
+        "icon": "icons/orange-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.orange3",
+        "category": "Sourcegraph",
+        "title": "orange3",
+        "icon": "icons/orange-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.red1",
+        "category": "Sourcegraph",
+        "title": "red1",
+        "icon": "icons/red-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.red2",
+        "category": "Sourcegraph",
+        "title": "red2",
+        "icon": "icons/red-square.svg",
+        "enablement": "a == b"
+      },
+      {
+        "command": "extension.red3",
+        "category": "Sourcegraph",
+        "title": "red3",
+        "icon": "icons/red-square.svg",
+        "enablement": "a == b"
+      },
       {
         "command": "extension.newNotebook",
         "category": "Sourcegraph",
@@ -199,19 +260,68 @@
         }
       ],
       "view/item/context": [
-        {"command": "extension.goToFileInFolder", "when": "view == sourcegraph.files && viewItem == directory"},
-        {"command": "extension.switchGitRevision", "when": "view == sourcegraph.files && viewItem == file"},
-        {"command": "extension.openFileInBrowser", "when": "view == sourcegraph.files && viewItem == file"},
-        {"command": "extension.updateCompareRange", "group": "inline", "when": "view == sourcegraph.diffs && viewItem == compareRange"},
-        {"command": "extension.green1",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green1/"},
-        {"command": "extension.green2",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green2/"},
-        {"command": "extension.green3",  "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /green3/"},
-        {"command": "extension.orange1", "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /orange1/"},
-        {"command": "extension.orange2", "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /orange2/"},
-        {"command": "extension.orange3", "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /orange3/"},
-        {"command": "extension.red1",    "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /red1/"},
-        {"command": "extension.red2",    "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /red2/"},
-        {"command": "extension.red3",    "group": "inline", "when": "view == sourcegraph.diffs && viewItem =~ /red3/"}
+        {
+          "command": "extension.goToFileInFolder",
+          "when": "view == sourcegraph.files && viewItem == directory"
+        },
+        {
+          "command": "extension.switchGitRevision",
+          "when": "view == sourcegraph.files && viewItem == file"
+        },
+        {
+          "command": "extension.openFileInBrowser",
+          "when": "view == sourcegraph.files && viewItem == file"
+        },
+        {
+          "command": "extension.updateCompareRange",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem == compareRange"
+        },
+        {
+          "command": "extension.green1",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /green1/"
+        },
+        {
+          "command": "extension.green2",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /green2/"
+        },
+        {
+          "command": "extension.green3",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /green3/"
+        },
+        {
+          "command": "extension.orange1",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /orange1/"
+        },
+        {
+          "command": "extension.orange2",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /orange2/"
+        },
+        {
+          "command": "extension.orange3",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /orange3/"
+        },
+        {
+          "command": "extension.red1",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /red1/"
+        },
+        {
+          "command": "extension.red2",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /red2/"
+        },
+        {
+          "command": "extension.red3",
+          "group": "inline",
+          "when": "view == sourcegraph.diffs && viewItem =~ /red3/"
+        }
       ]
     },
     "keybindings": [
@@ -382,6 +492,7 @@
   },
   "dependencies": {
     "@types/mocha": "8.2.0",
+    "date-fns": "^2.24.0",
     "execa": "^5.0.0",
     "got": "^11.8.2",
     "mocha": "^8.3.0",

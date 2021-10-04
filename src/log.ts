@@ -6,6 +6,12 @@ export const log = {
     error: (what: string, error?: any): void => {
         outputChannel.appendLine(`ERROR ${errorMessage(what, error)}`)
     },
+    debug: (what: any): void => {
+        for (const key of Object.keys(what)) {
+            const value = JSON.stringify(what[key])
+            outputChannel.appendLine(`${key}=${value}`)
+        }
+    },
     appendLine: (message: string): void => {
         outputChannel.appendLine(message)
     },

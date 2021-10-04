@@ -21,6 +21,7 @@ import { openFileInBrowserCommand } from './commands/openFileInBrowserCommand'
 import { DiffsTreeDataProvider } from './file-system/DiffsTreeDataProvider'
 import { updateCompareRange } from './commands/updateCompareRangeCommand'
 import { BlameDecorationProvider } from './file-system/BlameDecorationProvider'
+import { goToCommitCommand } from './commands/goToCommitCommand'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 export const { version } = require('../package.json')
@@ -78,20 +79,20 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerDefinitionProvider({ scheme: 'sourcegraph' }, new SourcegraphDefinitionProvider(fs))
     vscode.languages.registerReferenceProvider({ scheme: 'sourcegraph' }, referenceProvider)
 
-    const filesTreeProvider = new FilesTreeDataProvider(fs)
+    const files = new FilesTreeDataProvider(fs)
     const filesTreeView = vscode.window.createTreeView<string>('sourcegraph.files', {
-        treeDataProvider: filesTreeProvider,
+        treeDataProvider: files,
         showCollapseAll: true,
     })
-    filesTreeProvider.setTreeView(filesTreeView)
+    files.setTreeView(filesTreeView)
 
-    const diffsTreeProvider = new DiffsTreeDataProvider(fs)
+    const diffs = new DiffsTreeDataProvider(fs)
     const diffsTreeView = vscode.window.createTreeView('sourcegraph.diffs', {
-        treeDataProvider: diffsTreeProvider,
+        treeDataProvider: diffs,
         showCollapseAll: true,
     })
 
-    diffsTreeProvider.setTreeView(diffsTreeView)
+    diffs.setTreeView(diffsTreeView)
     for (const treeView of [filesTreeView, diffsTreeView]) {
         context.subscriptions.push(treeView)
     }
@@ -122,20 +123,20 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand(
             'extension.switchGitRevision',
             handleCommandErrors('extension.switchGitRevision', (uri: string | undefined) =>
-                switchGitRevisionCommand(filesTreeProvider, uri)
+                switchGitRevisionCommand(files, uri)
             )
         )
     )
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.updateCompareRange', async (...commandArguments) => {
-            await updateCompareRange(diffsTreeProvider, commandArguments)
+            await updateCompareRange(diffs, commandArguments)
         })
     )
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.openFileInBrowser',
             handleCommandErrors('extension.openFileInBrowser', (uri: string | undefined) =>
-                openFileInBrowserCommand(filesTreeProvider, uri)
+                openFileInBrowserCommand(files, uri)
             )
         )
     )
@@ -148,7 +149,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'extension.focusActiveFile',
-            handleCommandErrors('extension.focusActiveFile', () => filesTreeProvider.focusActiveFile())
+            handleCommandErrors('extension.focusActiveFile', () => files.focusActiveFile())
         )
     )
     context.subscriptions.push(
@@ -169,7 +170,7 @@ export function activate(context: vscode.ExtensionContext): void {
         { language: 'sourcegraph' },
         new SourcegraphCompletionItemProvider()
     )
-    for (const treeProvider of [filesTreeProvider, diffsTreeProvider]) {
+    for (const treeProvider of [files, diffs]) {
         context.subscriptions.push(
             vscode.window.onDidChangeActiveTextEditor(editor => treeProvider.didFocus(editor?.document.uri))
         )
@@ -182,6 +183,11 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(event =>
             blameDecorationProvider.onDidChangeTextEditorSelection(event)
+        )
+    )
+    context.subscriptions.push(
+        vscode.commands.registerCommand('extension.goToCommit', (...commandArguments) =>
+            goToCommitCommand(diffs, commandArguments)
         )
     )
     vscode.workspace.registerNotebookSerializer('sourcegraph-notebook', new SourcegraphNotebookSerializer(fs), {})

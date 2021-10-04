@@ -21,15 +21,19 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
     private treeItemCache = new Map<string, vscode.TreeItem>()
     private compareRangesByRepositoryName = new Map<string, CompareRange>()
     private diffNodeChanges = new vscode.EventEmitter<string | undefined>()
+    public activeUri: vscode.Uri | undefined
     public onDidChangeTreeData?: vscode.Event<string | undefined> = this.diffNodeChanges.event
     constructor(public readonly fs: SourcegraphFileSystemProvider) {
         fs.onDidDownloadRepositoryFilenames(() => this.diffNodeChanges.fire(undefined))
     }
     // private treeView: vscode.TreeView<string> | undefined
-    public updateCompareRange(repositoryName: string, kind: 'base' | 'head', revision: string): void {
-        const range = this.compareRangeName(repositoryName)
-        const updatedRange: CompareRange = { ...range }
+    public updateCompareRangePart(repositoryName: string, kind: 'base' | 'head', revision: string): void {
+        const old = this.compareRangeName(repositoryName)
+        const updatedRange: CompareRange = { ...old }
         updatedRange[kind] = revision
+        this.updateCompareRange(repositoryName, updatedRange)
+    }
+    public updateCompareRange(repositoryName: string, updatedRange: CompareRange): void {
         this.compareRangesByRepositoryName.set(repositoryName, updatedRange)
         this.diffNodeChanges.fire(undefined)
     }
@@ -37,6 +41,7 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
         // this.treeView = newTreeView
     }
     public async didFocus(vscodeUri: vscode.Uri | undefined): Promise<void> {
+        this.activeUri = vscodeUri
         // if (vscodeUri && this.treeView) {
         // this.treeView.reveal(this.counter % 2 === 0 ? first.toString() : second.toString(), { select: true })
         // }
@@ -253,6 +258,10 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
         return range
     }
 
+    public diffTitle(basename: string, range: CompareRange): string {
+        return `${basename} (${range.base.slice(0, 7)} ↔ ${range.head.slice(0, 7)})`
+    }
+
     private newTreeItem(
         uri: SourcegraphUri,
         childNode: DiffNode,
@@ -273,7 +282,7 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
                               : this.fs.emptyFileUri()
                       ),
                       vscode.Uri.parse(uri.withRevision(range.head).uri),
-                      `${uri.basename()} (${range.base} ↔ ${range.head})`,
+                      this.diffTitle(uri.basename(), range),
                   ],
               }
             : undefined
@@ -292,6 +301,10 @@ export class DiffsTreeDataProvider implements vscode.TreeDataProvider<string> {
                 : vscode.TreeItemCollapsibleState.Collapsed,
             command,
             resourceUri: vscode.Uri.parse(uri.uri),
+            // TODO: figure out how to get an icon on the right side similar to
+            // gitlens.  We can use the resourceUri below, but then we loose the
+            // file icon.
+            // resourceUri: vscode.Uri.parse('gitlens-view://commit-file/status/M'),
             contextValue: fileStats.contextValue,
         }
     }

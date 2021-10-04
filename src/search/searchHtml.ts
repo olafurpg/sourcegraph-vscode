@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import { SearchPatternType } from './scanner'
 import { searchQueryResult, SearchResultNode } from '../queries/searchQuery'
+import { log } from '../log'
 
 export async function searchHtml(
     host: string,
@@ -24,7 +25,27 @@ function formatCommit(host: string, node: SearchResultNode, html: string[]): voi
     if (node.__typename !== 'CommitSearchResult') {
         return
     }
-    // Not supported
+    log.debug({ node })
+    if (!node?.commit?.message) {
+        return
+    }
+    const match = node.matches?.[0]
+    if (!match) {
+        return
+    }
+    if (!match?.body?.text) {
+        return
+    }
+    if (!match.url) {
+        return
+    }
+    const url = `sourcegraph://${host}${match.url}`
+    html.push('<p>')
+    html.push(`<code><a style='cursor:pointer' class='sourcegraph-location' id="${url}">${match.url}</a></code>`)
+    if (node.commit?.message) {
+        html.push(`<pre>${node.commit?.message}</pre>`)
+    }
+    html.push('</p>')
 }
 
 function formatRepository(host: string, node: SearchResultNode, html: string[]): void {
