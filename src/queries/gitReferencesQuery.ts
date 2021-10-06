@@ -1,7 +1,6 @@
 import * as vscode from 'vscode'
 import { graphqlQuery } from './graphqlQuery'
 import gql from 'tagged-template-noop'
-import { log } from '../log'
 
 export interface GitReference {
     displayName: string
@@ -62,7 +61,6 @@ export async function gitReferencesQuery(
     )
 
     const result = response?.data?.node?.gitRefs?.nodes || []
-    log.debug({ ancestorSuffix, result })
     if (ancestorSuffix) {
         for (const reference of result) {
             reference.displayName = reference.displayName + ancestorSuffix
@@ -70,7 +68,6 @@ export async function gitReferencesQuery(
             reference.url = reference.url + ancestorSuffix
         }
     }
-    log.debug({ result })
     return result
 }
 

@@ -1,5 +1,13 @@
 import { URL, URLSearchParams } from 'url'
 import { Position } from '../queries/Range'
+interface Optionals {
+    revision?: string
+    path?: string
+    position?: Position
+    isDirectory?: boolean
+    isCommit?: boolean
+    compareRange?: CompareRange
+}
 
 /**
  * SourcegraphUri encodes a URI like `sourcegraph://HOST/REPOSITORY@REVISION/-/blob/PATH?L1337`.
@@ -22,6 +30,16 @@ export class SourcegraphUri {
                 this.path || ''
             }${this.positionSuffix()}`
         )
+    }
+
+    public with(optionals: Optionals): SourcegraphUri {
+        return SourcegraphUri.fromParts(this.host, this.repositoryName, {
+            path: this.path,
+            revision: this.revision,
+            compareRange: this.compareRange,
+            position: this.position,
+            ...optionals,
+        })
     }
 
     public withPath(newPath: string): SourcegraphUri {
@@ -75,18 +93,7 @@ export class SourcegraphUri {
         return this.uri.includes('/-/blob/')
     }
 
-    public static fromParts(
-        host: string,
-        repositoryName: string,
-        optional?: {
-            revision?: string
-            path?: string
-            position?: Position
-            isDirectory?: boolean
-            isCommit?: boolean
-            compareRange?: CompareRange
-        }
-    ): SourcegraphUri {
+    public static fromParts(host: string, repositoryName: string, optional?: Optionals): SourcegraphUri {
         const revisionPart = optional?.revision && !optional.isCommit ? `@${optional.revision}` : ''
         const directoryPart = optional?.isDirectory
             ? 'tree'

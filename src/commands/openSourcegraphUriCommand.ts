@@ -22,6 +22,7 @@ export async function openSourcegraphUriCommand(fs: SourcegraphFileSystemProvide
 
 async function openCompareUri(uri: SourcegraphUri, compareRange: CompareRange): Promise<void> {
     try {
+        // TODO: fix me.
         log.appendLine(`openCompareUri uri=${uri.uri} compareRange=${JSON.stringify(compareRange)}`)
         await vscode.commands.executeCommand(
             'vscode.diff',
